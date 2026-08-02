@@ -1,0 +1,1247 @@
+{
+ "lateralityGate": {
+  "scored": 30,
+  "contralateral": 30,
+  "exceptions": [],
+  "pass": true,
+  "note": "a unilateral lesion must be contralateral to the recorded paralysis; scores parsed StrokeLocation against the untouched ParalysisSide column"
+ },
+ "source": "stroke_qeeg participants.tsv",
+ "n": 50,
+ "evidence": "plausible-approximation",
+ "limitation": "Lesion locations are clinician free text mapped onto the nearest occlusion site this model can produce. Entries marked approximate name a watershed or periventricular region rather than a single arterial territory. No imaging was consulted.",
+ "presets": [
+  {
+   "id": "sub-01",
+   "age": 45,
+   "gender": "male",
+   "durationMonths": 1,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left pons",
+   "nihss": 11,
+   "mbi": 50,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "left",
+     "approximate": false,
+     "from": "Left pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-02",
+   "age": 60,
+   "gender": "male",
+   "durationMonths": 2,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right pons",
+   "nihss": 3,
+   "mbi": 55,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "right",
+     "approximate": false,
+     "from": "Right pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-03",
+   "age": 60,
+   "gender": "male",
+   "durationMonths": 2,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Left cerebellum, bilateral paraventricular, Right corona radiata",
+   "nihss": 3,
+   "mbi": 90,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "pica",
+     "side": "left",
+     "approximate": false,
+     "from": "Left cerebellum",
+     "why": "cerebellar hemisphere"
+    },
+    {
+     "site": "lsa",
+     "side": "left",
+     "approximate": true,
+     "from": "bilateral paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    },
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": true,
+     "from": "bilateral paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    },
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": false,
+     "from": "Right corona radiata",
+     "why": "lenticulostriate perforator territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-04",
+   "age": 56,
+   "gender": "male",
+   "durationMonths": 14,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left frontal parietal cortex, Left centrum semiovale",
+   "nihss": 6,
+   "mbi": 90,
+   "mrs": 3,
+   "lesions": [
+    {
+     "site": "m2sup",
+     "side": "left",
+     "approximate": false,
+     "from": "Left frontal parietal cortex",
+     "why": "MCA superior division"
+    },
+    {
+     "site": "lsa",
+     "side": "left",
+     "approximate": true,
+     "from": "Left centrum semiovale",
+     "why": "watershed white matter, not a named large-vessel territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-05",
+   "age": 44,
+   "gender": "female",
+   "durationMonths": 4,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Left pons",
+   "nihss": 4,
+   "mbi": 60,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "left",
+     "approximate": false,
+     "from": "Left pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-06",
+   "age": 66,
+   "gender": "male",
+   "durationMonths": 6,
+   "paralysisSide": "left",
+   "handedness": "left",
+   "location": "Right pons",
+   "nihss": 3,
+   "mbi": 85,
+   "mrs": 3,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "right",
+     "approximate": false,
+     "from": "Right pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-07",
+   "age": 62,
+   "gender": "male",
+   "durationMonths": 5,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left pons",
+   "nihss": 2,
+   "mbi": 100,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "left",
+     "approximate": false,
+     "from": "Left pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-08",
+   "age": 64,
+   "gender": "male",
+   "durationMonths": 5,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right basal ganglia",
+   "nihss": 3,
+   "mbi": 85,
+   "mrs": 2,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": false,
+     "from": "Right basal ganglia",
+     "why": "striatum and pallidum"
+    }
+   ]
+  },
+  {
+   "id": "sub-09",
+   "age": 57,
+   "gender": "male",
+   "durationMonths": 3,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left paraventricular",
+   "nihss": 6,
+   "mbi": 55,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "left",
+     "approximate": true,
+     "from": "Left paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-10",
+   "age": 55,
+   "gender": "male",
+   "durationMonths": 2,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right pons",
+   "nihss": 3,
+   "mbi": 55,
+   "mrs": 0,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "right",
+     "approximate": false,
+     "from": "Right pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-11",
+   "age": 31,
+   "gender": "male",
+   "durationMonths": 7,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right paraventricular",
+   "nihss": 5,
+   "mbi": 55,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": true,
+     "from": "Right paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-12",
+   "age": 58,
+   "gender": "male",
+   "durationMonths": 1,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left medulla oblongata",
+   "nihss": 1,
+   "mbi": 100,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "pica",
+     "side": "left",
+     "approximate": false,
+     "from": "Left medulla oblongata",
+     "why": "lateral medulla is PICA territory (Wallenberg)"
+    }
+   ]
+  },
+  {
+   "id": "sub-13",
+   "age": 46,
+   "gender": "male",
+   "durationMonths": 3,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left paraventricular",
+   "nihss": 9,
+   "mbi": 55,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "left",
+     "approximate": true,
+     "from": "Left paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-14",
+   "age": 67,
+   "gender": "female",
+   "durationMonths": 2,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left pons",
+   "nihss": 2,
+   "mbi": 75,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "left",
+     "approximate": false,
+     "from": "Left pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-15",
+   "age": 63,
+   "gender": "male",
+   "durationMonths": 1,
+   "paralysisSide": "left",
+   "handedness": "left",
+   "location": "Right fronto-parietal temporo-occipital lobe, Right inner watershed",
+   "nihss": 7,
+   "mbi": 55,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "pca",
+     "side": "right",
+     "approximate": true,
+     "from": "Right fronto-parietal temporo-occipital lobe",
+     "why": "PCA cortical territory; clause spans more than one arterial territory"
+    },
+    {
+     "site": "m2sup",
+     "side": "right",
+     "approximate": true,
+     "from": "Right fronto-parietal temporo-occipital lobe",
+     "why": "MCA superior division; clause spans more than one arterial territory"
+    },
+    {
+     "site": "m2inf",
+     "side": "right",
+     "approximate": true,
+     "from": "Right fronto-parietal temporo-occipital lobe",
+     "why": "MCA inferior division; clause spans more than one arterial territory"
+    },
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": true,
+     "from": "Right inner watershed",
+     "why": "internal borderzone, not a single territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-16",
+   "age": 57,
+   "gender": "male",
+   "durationMonths": 1,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left basal ganglia",
+   "nihss": 4,
+   "mbi": 90,
+   "mrs": 2,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "left",
+     "approximate": false,
+     "from": "Left basal ganglia",
+     "why": "striatum and pallidum"
+    }
+   ]
+  },
+  {
+   "id": "sub-17",
+   "age": 60,
+   "gender": "male",
+   "durationMonths": 3,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right paraventricular, Right basal ganglia",
+   "nihss": 3,
+   "mbi": 85,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": true,
+     "from": "Right paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    },
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": false,
+     "from": "Right basal ganglia",
+     "why": "striatum and pallidum"
+    }
+   ]
+  },
+  {
+   "id": "sub-18",
+   "age": 60,
+   "gender": "female",
+   "durationMonths": 1,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right basal ganglia",
+   "nihss": 10,
+   "mbi": 45,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": false,
+     "from": "Right basal ganglia",
+     "why": "striatum and pallidum"
+    }
+   ]
+  },
+  {
+   "id": "sub-19",
+   "age": 62,
+   "gender": "female",
+   "durationMonths": 1,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right paraventricular, Right basal ganglia",
+   "nihss": 8,
+   "mbi": 40,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": true,
+     "from": "Right paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    },
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": false,
+     "from": "Right basal ganglia",
+     "why": "striatum and pallidum"
+    }
+   ]
+  },
+  {
+   "id": "sub-20",
+   "age": 34,
+   "gender": "male",
+   "durationMonths": 24,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left paraventricular, Right temporal lobe",
+   "nihss": 2,
+   "mbi": 95,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "left",
+     "approximate": true,
+     "from": "Left paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    },
+    {
+     "site": "m2inf",
+     "side": "right",
+     "approximate": false,
+     "from": "Right temporal lobe",
+     "why": "MCA inferior division"
+    }
+   ]
+  },
+  {
+   "id": "sub-21",
+   "age": 41,
+   "gender": "male",
+   "durationMonths": 5,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Pons",
+   "nihss": 2,
+   "mbi": 90,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "left",
+     "approximate": false,
+     "from": "Pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-22",
+   "age": 52,
+   "gender": "male",
+   "durationMonths": 6,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right temporo-parietal occipital lobe and insula, Right basal ganglia, Right paraventricular",
+   "nihss": 11,
+   "mbi": 45,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "pca",
+     "side": "right",
+     "approximate": true,
+     "from": "Right temporo-parietal occipital lobe",
+     "why": "PCA cortical territory; clause spans more than one arterial territory"
+    },
+    {
+     "site": "m2sup",
+     "side": "right",
+     "approximate": true,
+     "from": "Right temporo-parietal occipital lobe",
+     "why": "MCA superior division; clause spans more than one arterial territory"
+    },
+    {
+     "site": "m2inf",
+     "side": "right",
+     "approximate": true,
+     "from": "Right temporo-parietal occipital lobe",
+     "why": "MCA inferior division; clause spans more than one arterial territory"
+    },
+    {
+     "site": "m1",
+     "side": "right",
+     "approximate": false,
+     "from": "insula",
+     "why": "insular cortex is proximal MCA"
+    },
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": false,
+     "from": "Right basal ganglia",
+     "why": "striatum and pallidum"
+    },
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": true,
+     "from": "Right paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-23",
+   "age": 57,
+   "gender": "male",
+   "durationMonths": 2,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right paraventricular, Right basal ganglia",
+   "nihss": 4,
+   "mbi": 40,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": true,
+     "from": "Right paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    },
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": false,
+     "from": "Right basal ganglia",
+     "why": "striatum and pallidum"
+    }
+   ]
+  },
+  {
+   "id": "sub-24",
+   "age": 55,
+   "gender": "female",
+   "durationMonths": 3,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left paraventricular",
+   "nihss": 1,
+   "mbi": 60,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "left",
+     "approximate": true,
+     "from": "Left paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-25",
+   "age": 47,
+   "gender": "male",
+   "durationMonths": 10,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right paraventricular",
+   "nihss": 5,
+   "mbi": 55,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": true,
+     "from": "Right paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-26",
+   "age": 61,
+   "gender": "male",
+   "durationMonths": 1,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right thalamus",
+   "nihss": 4,
+   "mbi": 70,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "thalamoperf",
+     "side": "right",
+     "approximate": false,
+     "from": "Right thalamus",
+     "why": "thalamoperforator territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-27",
+   "age": 52,
+   "gender": "female",
+   "durationMonths": 5,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left basal ganglia, Left paraventricular",
+   "nihss": 3,
+   "mbi": 70,
+   "mrs": 3,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "left",
+     "approximate": false,
+     "from": "Left basal ganglia",
+     "why": "striatum and pallidum"
+    },
+    {
+     "site": "lsa",
+     "side": "left",
+     "approximate": true,
+     "from": "Left paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-28",
+   "age": 42,
+   "gender": "female",
+   "durationMonths": 2,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left thalamus",
+   "nihss": 1,
+   "mbi": 85,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "thalamoperf",
+     "side": "left",
+     "approximate": false,
+     "from": "Left thalamus",
+     "why": "thalamoperforator territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-29",
+   "age": 53,
+   "gender": "male",
+   "durationMonths": 16,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left thalamus",
+   "nihss": 1,
+   "mbi": 95,
+   "mrs": 0,
+   "lesions": [
+    {
+     "site": "thalamoperf",
+     "side": "left",
+     "approximate": false,
+     "from": "Left thalamus",
+     "why": "thalamoperforator territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-30",
+   "age": 68,
+   "gender": "male",
+   "durationMonths": 4,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right paraventricular",
+   "nihss": 4,
+   "mbi": 100,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": true,
+     "from": "Right paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-31",
+   "age": 59,
+   "gender": "female",
+   "durationMonths": 5,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left corona radiata, Left centrum semiovale",
+   "nihss": 3,
+   "mbi": 80,
+   "mrs": 3,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "left",
+     "approximate": false,
+     "from": "Left corona radiata",
+     "why": "lenticulostriate perforator territory"
+    },
+    {
+     "site": "lsa",
+     "side": "left",
+     "approximate": true,
+     "from": "Left centrum semiovale",
+     "why": "watershed white matter, not a named large-vessel territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-32",
+   "age": 74,
+   "gender": "male",
+   "durationMonths": 2,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left pons",
+   "nihss": 3,
+   "mbi": 81,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "left",
+     "approximate": false,
+     "from": "Left pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-33",
+   "age": 63,
+   "gender": "male",
+   "durationMonths": 7,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Pons",
+   "nihss": 3,
+   "mbi": 58,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "left",
+     "approximate": false,
+     "from": "Pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-34",
+   "age": 69,
+   "gender": "female",
+   "durationMonths": 1,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right frontal lobe",
+   "nihss": 1,
+   "mbi": 85,
+   "mrs": 2,
+   "lesions": [
+    {
+     "site": "m2sup",
+     "side": "right",
+     "approximate": false,
+     "from": "Right frontal lobe",
+     "why": "MCA superior division"
+    }
+   ]
+  },
+  {
+   "id": "sub-35",
+   "age": 69,
+   "gender": "male",
+   "durationMonths": 11,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right cerebellum,bilateral occipital lobes",
+   "nihss": 1,
+   "mbi": 52,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "pica",
+     "side": "right",
+     "approximate": false,
+     "from": "Right cerebellum",
+     "why": "cerebellar hemisphere"
+    },
+    {
+     "site": "pca",
+     "side": "left",
+     "approximate": false,
+     "from": "bilateral occipital lobes",
+     "why": "PCA cortical territory"
+    },
+    {
+     "site": "pca",
+     "side": "right",
+     "approximate": false,
+     "from": "bilateral occipital lobes",
+     "why": "PCA cortical territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-36",
+   "age": 69,
+   "gender": "male",
+   "durationMonths": 30,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right paraventricular,right basal ganglia",
+   "nihss": 6,
+   "mbi": 63,
+   "mrs": 3,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": true,
+     "from": "Right paraventricular",
+     "why": "periventricular white matter is small-vessel / borderzone territory"
+    },
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": false,
+     "from": "right basal ganglia",
+     "why": "striatum and pallidum"
+    }
+   ]
+  },
+  {
+   "id": "sub-37",
+   "age": 49,
+   "gender": "male",
+   "durationMonths": 7,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right internal capsule",
+   "nihss": 3,
+   "mbi": 88,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": false,
+     "from": "Right internal capsule",
+     "why": "posterior limb, perforator territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-38",
+   "age": 53,
+   "gender": "male",
+   "durationMonths": 2,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Right pons",
+   "nihss": 3,
+   "mbi": 64,
+   "mrs": 3,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "right",
+     "approximate": false,
+     "from": "Right pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-39",
+   "age": 56,
+   "gender": "male",
+   "durationMonths": 2,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left cerebellar hemisphere, Left medulla oblongata",
+   "nihss": 11,
+   "mbi": 32,
+   "mrs": 5,
+   "lesions": [
+    {
+     "site": "pica",
+     "side": "left",
+     "approximate": false,
+     "from": "Left cerebellar hemisphere",
+     "why": "cerebellar hemisphere"
+    },
+    {
+     "site": "pica",
+     "side": "left",
+     "approximate": false,
+     "from": "Left medulla oblongata",
+     "why": "lateral medulla is PICA territory (Wallenberg)"
+    }
+   ]
+  },
+  {
+   "id": "sub-40",
+   "age": 56,
+   "gender": "female",
+   "durationMonths": 6,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right pons",
+   "nihss": 6,
+   "mbi": 65,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "right",
+     "approximate": false,
+     "from": "Right pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-41",
+   "age": 77,
+   "gender": "male",
+   "durationMonths": 2,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left pons",
+   "nihss": 7,
+   "mbi": 60,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "left",
+     "approximate": false,
+     "from": "Left pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-42",
+   "age": 54,
+   "gender": "male",
+   "durationMonths": 2,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left pons",
+   "nihss": 7,
+   "mbi": 60,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "left",
+     "approximate": false,
+     "from": "Left pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-43",
+   "age": 32,
+   "gender": "male",
+   "durationMonths": 3,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right frontal lobe",
+   "nihss": 2,
+   "mbi": 65,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "m2sup",
+     "side": "right",
+     "approximate": false,
+     "from": "Right frontal lobe",
+     "why": "MCA superior division"
+    }
+   ]
+  },
+  {
+   "id": "sub-44",
+   "age": 59,
+   "gender": "male",
+   "durationMonths": 1,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right subfrontal cortex, Right basal ganglia, Right lateral ventricle, Right corona radiata",
+   "nihss": 1,
+   "mbi": 80,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "aca",
+     "side": "right",
+     "approximate": true,
+     "from": "Right subfrontal cortex",
+     "why": "orbitofrontal, ACA/MCA border"
+    },
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": false,
+     "from": "Right basal ganglia",
+     "why": "striatum and pallidum"
+    },
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": false,
+     "from": "Right corona radiata",
+     "why": "lenticulostriate perforator territory"
+    }
+   ]
+  },
+  {
+   "id": "sub-45",
+   "age": 64,
+   "gender": "male",
+   "durationMonths": 30,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left pons",
+   "nihss": 6,
+   "mbi": 84,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "left",
+     "approximate": false,
+     "from": "Left pons",
+     "why": "basilar perforators"
+    }
+   ]
+  },
+  {
+   "id": "sub-46",
+   "age": 66,
+   "gender": "male",
+   "durationMonths": 10,
+   "paralysisSide": "right",
+   "handedness": "right",
+   "location": "Left parietal lobe",
+   "nihss": 1,
+   "mbi": 85,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "m2sup",
+     "side": "left",
+     "approximate": false,
+     "from": "Left parietal lobe",
+     "why": "MCA superior division"
+    }
+   ]
+  },
+  {
+   "id": "sub-47",
+   "age": 40,
+   "gender": "male",
+   "durationMonths": 4,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right medulla oblongata",
+   "nihss": 7,
+   "mbi": 55,
+   "mrs": 4,
+   "lesions": [
+    {
+     "site": "pica",
+     "side": "right",
+     "approximate": false,
+     "from": "Right medulla oblongata",
+     "why": "lateral medulla is PICA territory (Wallenberg)"
+    }
+   ]
+  },
+  {
+   "id": "sub-48",
+   "age": 75,
+   "gender": "male",
+   "durationMonths": 18,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right subcortical cerebral hemisphere, Right basal ganglia, Left subparietal cortex",
+   "nihss": 2,
+   "mbi": 90,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": true,
+     "from": "Right subcortical cerebral hemisphere",
+     "why": "unspecified deep white matter"
+    },
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": false,
+     "from": "Right basal ganglia",
+     "why": "striatum and pallidum"
+    },
+    {
+     "site": "m2sup",
+     "side": "left",
+     "approximate": true,
+     "from": "Left subparietal cortex",
+     "why": "medial parietal, ACA/MCA border"
+    }
+   ]
+  },
+  {
+   "id": "sub-49",
+   "age": 52,
+   "gender": "male",
+   "durationMonths": 3,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right basal ganglia",
+   "nihss": 1,
+   "mbi": 85,
+   "mrs": 1,
+   "lesions": [
+    {
+     "site": "lsa",
+     "side": "right",
+     "approximate": false,
+     "from": "Right basal ganglia",
+     "why": "striatum and pallidum"
+    }
+   ]
+  },
+  {
+   "id": "sub-50",
+   "age": 64,
+   "gender": "female",
+   "durationMonths": 1,
+   "paralysisSide": "left",
+   "handedness": "right",
+   "location": "Right pons",
+   "nihss": 3,
+   "mbi": 85,
+   "mrs": 2,
+   "lesions": [
+    {
+     "site": "basilar",
+     "side": "right",
+     "approximate": false,
+     "from": "Right pons",
+     "why": "basilar perforators"
+    }
+   ]
+  }
+ ]
+}

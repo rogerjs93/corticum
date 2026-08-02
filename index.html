@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>corticum — Phase 0 spike</title>
+    <script>
+      // rAF race shim. In a hidden/headless document rAF never fires, which
+      // silently stalls any code that waits on a frame. Anything that must be
+      // able to run without a visible compositor should go through
+      // window.__corticum.renderOneFrame() instead of the rAF loop — see
+      // CLAUDE.md "Verify". This shim only keeps startup from deadlocking.
+      (function () {
+        var raf = window.requestAnimationFrame;
+        var pending = [];
+        var timer = null;
+        window.requestAnimationFrame = function (cb) {
+          if (document.hidden) {
+            pending.push(cb);
+            if (timer === null) {
+              timer = setTimeout(function () {
+                timer = null;
+                var run = pending;
+                pending = [];
+                var t = performance.now();
+                for (var i = 0; i < run.length; i++) run[i](t);
+              }, 16);
+            }
+            return -1;
+          }
+          return raf.call(window, cb);
+        };
+      })();
+    </script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #0b0d10;
+        color: #d7dee8;
+        font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      #app {
+        position: fixed;
+        inset: 0;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        outline: none;
+        touch-action: none;
+      }
+      #hud {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        z-index: 10;
+        padding: 10px 14px;
+        background: rgba(10, 13, 18, 0.82);
+        border: 1px solid #2a323d;
+        border-radius: 6px;
+        white-space: pre;
+        pointer-events: none;
+        max-width: 46ch;
+      }
+      .ok {
+        color: #6ee7a8;
+      }
+      .fail {
+        color: #ff7b72;
+      }
+      .warn {
+        color: #e3b341;
+      }
+      .dim {
+        color: #7d8896;
+      }
+
+      /* ---- control panel ---- */
+      .cx-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 290px;
+        z-index: 20;
+        overflow-y: auto;
+        padding: 14px 14px 40px;
+        background: rgba(10, 13, 18, 0.9);
+        border-left: 1px solid #232b35;
+        backdrop-filter: blur(6px);
+      }
+      .cx-sec {
+        margin-bottom: 22px;
+      }
+      .cx-h {
+        margin: 0 0 10px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: #8fa0b4;
+      }
+      .cx-select {
+        width: 100%;
+        margin-bottom: 8px;
+        padding: 6px 7px;
+        background: #141a22;
+        color: #d7dee8;
+        border: 1px solid #2a323d;
+        border-radius: 4px;
+        font: inherit;
+        font-size: 12px;
+      }
+      .cx-inline-row {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .cx-inline {
+        margin-bottom: 0;
+      }
+      .cx-row {
+        margin-bottom: 12px;
+      }
+      .cx-row-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 4px;
+      }
+      .cx-label {
+        font-size: 11px;
+        color: #8fa0b4;
+      }
+      .cx-val {
+        font-size: 11px;
+        color: #d7dee8;
+        font-variant-numeric: tabular-nums;
+      }
+      .cx-slider {
+        width: 100%;
+        accent-color: #4aa8d8;
+      }
+      .cx-btn {
+        padding: 5px 10px;
+        background: #1a222c;
+        color: #d7dee8;
+        border: 1px solid #2a323d;
+        border-radius: 4px;
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .cx-btn:hover {
+        background: #222c38;
+      }
+      .cx-wide {
+        width: 100%;
+        margin-top: 4px;
+      }
+      .cx-transport {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .cx-note {
+        font-size: 11px;
+        line-height: 1.45;
+        color: #a9b6c6;
+        margin-bottom: 4px;
+      }
+      .cx-cite {
+        font-size: 10px;
+        line-height: 1.4;
+        color: #6b7684;
+      }
+      .cx-evrow {
+        margin-bottom: 8px;
+      }
+      .cx-ev {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 10px;
+        color: #9aa7b6;
+        cursor: help;
+      }
+      .cx-ev-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+      }
+      .cx-hits {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-bottom: 6px;
+      }
+      .cx-hit {
+        text-align: left;
+        padding: 4px 6px;
+        background: #141a22;
+        border: 1px solid #232b35;
+        border-radius: 3px;
+        color: #c3ccd8;
+        font: inherit;
+        font-size: 11px;
+        cursor: pointer;
+      }
+      .cx-hit:hover {
+        background: #1d2530;
+      }
+      .cx-target {
+        font-size: 11px;
+        color: #7cc4ff;
+        margin: 2px 0 10px;
+      }
+      .cx-vol {
+        font-size: 11px;
+        color: #c3ccd8;
+        min-height: 16px;
+        margin-bottom: 6px;
+        font-variant-numeric: tabular-nums;
+        transition: opacity 0.15s;
+      }
+      .cx-stale {
+        opacity: 0.35;
+      }
+      .cx-scale {
+        display: flex;
+        gap: 5px;
+        align-items: baseline;
+        line-height: 1.5;
+      }
+      .cx-scale .cx-label {
+        min-width: 52px;
+      }
+      .cx-loss {
+        color: #e3b341;
+      }
+      .cx-dim {
+        color: #6b7684;
+      }
+      #hud {
+        max-width: 34ch;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"><canvas id="c"></canvas></div>
+    <div id="hud">booting…</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

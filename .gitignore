@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+
+# Phase 0 spike artifacts
+tests/artifacts/
+
+*.tsbuildinfo
+
+# The generated field payloads ARE committed. They are built by
+# tools/prep/build_fields.py from a local FreeSurfer install, total ~2.2 MB
+# gzipped, and the site cannot render without them — a clone that has to
+# reproduce a FreeSurfer pipeline before it shows anything is not a portfolio
+# piece. The prep scripts stay in tools/prep/ so the derivation is auditable.

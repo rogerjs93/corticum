@@ -1,0 +1,58 @@
+{
+ "version": "1.0.0",
+ "subject": "sample",
+ "generated": "2026-07-31T16:33:52",
+ "grid": {
+  "dim": 208,
+  "halfExtentMm": 104,
+  "spacingMm": 1.0,
+  "worldAxes": "X=Right, Y=Superior, Z=Anterior",
+  "centredOn": "tkrRAS origin (conformed voxel 128,128,128)",
+  "byteOrder": "x-fastest (WebGPU 3D texture order)"
+ },
+ "sdf": {
+  "rangeMm": 16.0,
+  "encoding": "int8, d/range*127"
+ },
+ "ventricle": {
+  "dim": 128
+ },
+ "sulc": {
+  "dim": 96,
+  "range": 2.0
+ },
+ "occupancy": 0.1397,
+ "landmarks": {
+  "corpusCallosumTopMm": 62.0,
+  "corpusCallosumBottomMm": 26.0,
+  "cerebellumTopMm": 15.0,
+  "brainstemCentreZMm": -9.739498588743151
+ },
+ "labelCount": 114,
+ "tissueClasses": {
+  "background": 0,
+  "csf_ventricle": 1,
+  "cortical_gm": 2,
+  "cerebral_wm": 3,
+  "deep_gm": 4,
+  "cerebellar_gm": 5,
+  "cerebellar_wm": 6,
+  "brainstem": 7,
+  "vessel": 8
+ },
+ "bytes": {
+  "sdf_brain.i8.gz": 1336994,
+  "sdf_vent.i8.gz": 108407,
+  "labels.u8.gz": 267438,
+  "sulc.i8.gz": 299741,
+  "regions.json": 24312
+ },
+ "sources": {
+  "aparc+aseg.mgz": "66956d76999ff4436ecba55496fa0c1aedf33f7853f3ce550423c869adf1a9d0",
+  "lh.white": "2146ad8a31cc34fab5c108432d13f301173ed82a071ff78c74395d2dc0e1ea42",
+  "lh.sulc": "72a05ec6a2fd23af3959104c134dff9fafda962e546fb9a44c3bc2df4adf001a",
+  "rh.white": "582d1220ab57212390f345d44e1c2de925efb89cbb9624c118a1d5adc668b2ba",
+  "rh.sulc": "115eede79f4a09b41cd6ffc3072863e18d07c4ba454b622606733d3e46a64a8d"
+ },
+ "license": "FreeSurfer \u2014 see LICENSES/FreeSurfer.md. Derived/modified data."
+}

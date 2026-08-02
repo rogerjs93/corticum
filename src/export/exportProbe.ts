@@ -1,0 +1,219 @@
+import { Constants } from '@babylonjs/core/Engines/constants';
+import type { WebGPUEngine } from '@babylonjs/core/Engines/webgpuEngine';
+import { ComputeShader } from '@babylonjs/core/Compute/computeShader';
+import { StorageBuffer } from '@babylonjs/core/Buffers/storageBuffer';
+import { UniformBuffer } from '@babylonjs/core/Materials/uniformBuffer';
+import '@babylonjs/core/Engines/WebGPU/Extensions/engine.computeShader';
+
+import { resolveWgsl } from '../engine/wgsl';
+import type { LoadedField } from '../fields/loader';
+import type { OperatorFields } from '../fields/operators';
+import type { DerivedFields } from '../fields/derived';
+import { writeNifti, worldVectorsToRas, downloadBlob } from './nifti';
+
+export interface ExportResult {
+  dim: number;
+  voxelMm: number;
+  files: string[];
+  /** Fraction of voxels inside the brain, as a sanity figure. */
+  insideFraction: number;
+  maxDisplacementMm: number;
+  bytes: number;
+  /** Present when `keep` is set: the emitted file bytes, for verification. */
+  buffers?: Array<{ name: string; data: ArrayBuffer }>;
+}
+
+/**
+ * Export the composed field as ground-truth NIfTI volumes.
+ *
+ * This is the feature that turns corticum from a teaching tool into something
+ * a methods researcher can use: the deformation is not estimated here, it IS
+ * the operator, so an algorithm's recovered warp can be scored against it
+ * exactly. Simul@atrophy does this offline in batch; this does it from a
+ * browser with nothing installed.
+ */
+export class ExportProbe {
+  private cs: ComputeShader;
+  private params: UniformBuffer;
+  private bufSdf: StorageBuffer | null = null;
+  private bufT1: StorageBuffer | null = null;
+  private bufDisp: StorageBuffer | null = null;
+  private allocatedDim = 0;
+
+  constructor(
+    private engine: WebGPUEngine,
+    private renderFrame: () => void,
+    private field: LoadedField,
+    private ops: OperatorFields,
+    private derived: DerivedFields
+  ) {
+    this.params = new UniformBuffer(engine, undefined, undefined, 'exportParams');
+    this.params.addUniform('cfg', 4);
+    this.params.addUniform('cfg2', 4);
+
+    this.cs = new ComputeShader(
+      'exportVolume',
+      engine,
+      { computeSource: resolveWgsl('compute/export_volume.wgsl') },
+      {
+        bindingsMapping: {
+          sdfTex: { group: 0, binding: 1 },
+          offTex: { group: 0, binding: 3 },
+          invTex: { group: 0, binding: 5 },
+          fwdTex: { group: 0, binding: 7 },
+          propTex: { group: 0, binding: 9 },
+          outSdf: { group: 0, binding: 10 },
+          outT1: { group: 0, binding: 11 },
+          outDisp: { group: 0, binding: 12 },
+          params: { group: 0, binding: 13 },
+        },
+      }
+    );
+    this.cs.setTexture('sdfTex', field.sdf);
+    this.cs.setTexture('offTex', ops.offset);
+    this.cs.setTexture('invTex', ops.deformInv);
+    this.cs.setTexture('fwdTex', ops.deformFwd);
+    this.cs.setTexture('propTex', derived.props);
+    this.cs.setUniformBuffer('params', this.params);
+  }
+
+  private allocate(dim: number): boolean {
+    if (this.allocatedDim === dim) return false;
+    this.dispose(false);
+    const n = dim * dim * dim;
+    const flags =
+      Constants.BUFFER_CREATIONFLAG_STORAGE | Constants.BUFFER_CREATIONFLAG_READWRITE;
+    this.bufSdf = new StorageBuffer(this.engine, n * 4, flags, 'exSdf');
+    this.bufT1 = new StorageBuffer(this.engine, n * 4, flags, 'exT1');
+    this.bufDisp = new StorageBuffer(this.engine, n * 3 * 4, flags, 'exDisp');
+    this.cs.setStorageBuffer('outSdf', this.bufSdf);
+    this.cs.setStorageBuffer('outT1', this.bufT1);
+    this.cs.setStorageBuffer('outDisp', this.bufDisp);
+    this.allocatedDim = dim;
+    return true;
+  }
+
+  /**
+   * @param dim output grid size. 128 keeps the readback near 40 MB; the shipped
+   *   anatomy is 208^3, and asking for that costs ~110 MB of transfer.
+   */
+  async run(
+    dim = 128,
+    opts: { download?: boolean; prefix?: string; keep?: boolean } = {}
+  ): Promise<ExportResult> {
+    const m = this.field.manifest;
+    const half = m.grid.halfExtentMm;
+    const fresh = this.allocate(dim);
+
+    this.params.updateFloat4('cfg', dim, half, m.grid.dim, m.sdf.rangeMm);
+    this.params.updateFloat4(
+      'cfg2',
+      this.ops.dim,
+      this.ops.active ? 1 : 0,
+      this.derived.propDim,
+      m.grid.dim
+    );
+    this.params.update();
+
+    const g = Math.ceil(dim / 4);
+
+    // Warm the pipeline whenever the buffers were just created. The FIRST
+    // dispatch against a newly built bind group does not reliably land before
+    // the readback, and because these outputs can legitimately be zero there is
+    // no sentinel that could tell "never written" from "genuinely empty" — the
+    // symptom was a healthy export reporting that NO voxel was inside the brain
+    // while the very next run reported 14%. Cheap to avoid: dispatch once and
+    // throw it away rather than doubling a 40 MB readback to compare.
+    if (fresh) {
+      await this.cs.dispatchWhenReady(g, g, g);
+      this.renderFrame();
+      this.renderFrame();
+    }
+
+    await this.cs.dispatchWhenReady(g, g, g);
+    // The dispatch is only RECORDED by dispatchWhenReady; two frames guarantee
+    // a submission boundary before the readback (gotcha #12).
+    this.renderFrame();
+    this.renderFrame();
+
+    const n = dim * dim * dim;
+    const readF32 = async (b: StorageBuffer, count: number) => {
+      const raw = await b.read(0, count * 4, undefined, true);
+      return new Float32Array(
+        raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength)
+      );
+    };
+    const sdf = await readF32(this.bufSdf!, n);
+    const t1 = await readF32(this.bufT1!, n);
+    const disp = await readF32(this.bufDisp!, n * 3);
+
+    let inside = 0;
+    for (let i = 0; i < n; i++) if (sdf[i] < 0) inside++;
+    let maxDisp = 0;
+    for (let i = 0; i < disp.length; i += 3) {
+      const d = Math.hypot(disp[i], disp[i + 1], disp[i + 2]);
+      if (d > maxDisp) maxDisp = d;
+    }
+
+    const voxelMm = (2 * half) / dim;
+    // Voxel (0,0,0) centre in RAS. The grid is centred on the world origin, so
+    // the first voxel sits half a voxel in from -half on every axis.
+    const o = -half + voxelMm / 2;
+    const origin: [number, number, number] = [o, o, o];
+    const prefix = opts.prefix ?? `corticum_${m.subject}`;
+
+    const files: { name: string; data: ArrayBuffer }[] = [
+      {
+        name: `${prefix}_t1.nii`,
+        data: writeNifti(t1, dim, {
+          voxelMm,
+          originMm: origin,
+          description: 'corticum synthetic T1 (not a pulse sequence)',
+        }),
+      },
+      {
+        name: `${prefix}_sdf.nii`,
+        data: writeNifti(sdf, dim, {
+          voxelMm,
+          originMm: origin,
+          description: 'corticum composed signed distance, mm',
+        }),
+      },
+      {
+        name: `${prefix}_disp.nii`,
+        data: writeNifti(worldVectorsToRas(disp), dim, {
+          voxelMm,
+          originMm: origin,
+          description: 'corticum ground-truth displacement, mm (RAS)',
+          intentCode: 1006, // NIFTI_INTENT_DISPVECT
+          components: 3,
+        }),
+      },
+    ];
+
+    if (opts.download !== false) {
+      for (const f of files) downloadBlob(f.data, f.name);
+    }
+
+    return {
+      dim,
+      voxelMm,
+      files: files.map((f) => f.name),
+      insideFraction: inside / n,
+      maxDisplacementMm: maxDisp,
+      bytes: files.reduce((a, f) => a + f.data.byteLength, 0),
+      buffers: opts.keep ? files : undefined,
+    };
+  }
+
+  dispose(full = true): void {
+    this.bufSdf?.dispose();
+    this.bufT1?.dispose();
+    this.bufDisp?.dispose();
+    this.bufSdf = null;
+    this.bufT1 = null;
+    this.bufDisp = null;
+    this.allocatedDim = 0;
+    if (full) this.params.dispose();
+  }
+}

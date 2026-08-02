@@ -1,0 +1,1256 @@
+[
+ {
+  "index": 0,
+  "fsLabel": 0,
+  "name": "Unknown",
+  "color": [
+   0,
+   0,
+   0
+  ],
+  "tissue": 0
+ },
+ {
+  "index": 1,
+  "fsLabel": 2,
+  "name": "Left-Cerebral-White-Matter",
+  "color": [
+   245,
+   245,
+   245
+  ],
+  "tissue": 3
+ },
+ {
+  "index": 2,
+  "fsLabel": 4,
+  "name": "Left-Lateral-Ventricle",
+  "color": [
+   120,
+   18,
+   134
+  ],
+  "tissue": 1
+ },
+ {
+  "index": 3,
+  "fsLabel": 5,
+  "name": "Left-Inf-Lat-Vent",
+  "color": [
+   196,
+   58,
+   250
+  ],
+  "tissue": 1
+ },
+ {
+  "index": 4,
+  "fsLabel": 7,
+  "name": "Left-Cerebellum-White-Matter",
+  "color": [
+   220,
+   248,
+   164
+  ],
+  "tissue": 6
+ },
+ {
+  "index": 5,
+  "fsLabel": 8,
+  "name": "Left-Cerebellum-Cortex",
+  "color": [
+   230,
+   148,
+   34
+  ],
+  "tissue": 5
+ },
+ {
+  "index": 6,
+  "fsLabel": 10,
+  "name": "Left-Thalamus-Proper",
+  "color": [
+   0,
+   118,
+   14
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 7,
+  "fsLabel": 11,
+  "name": "Left-Caudate",
+  "color": [
+   122,
+   186,
+   220
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 8,
+  "fsLabel": 12,
+  "name": "Left-Putamen",
+  "color": [
+   236,
+   13,
+   176
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 9,
+  "fsLabel": 13,
+  "name": "Left-Pallidum",
+  "color": [
+   12,
+   48,
+   255
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 10,
+  "fsLabel": 14,
+  "name": "3rd-Ventricle",
+  "color": [
+   204,
+   182,
+   142
+  ],
+  "tissue": 1
+ },
+ {
+  "index": 11,
+  "fsLabel": 15,
+  "name": "4th-Ventricle",
+  "color": [
+   42,
+   204,
+   164
+  ],
+  "tissue": 1
+ },
+ {
+  "index": 12,
+  "fsLabel": 16,
+  "name": "Brain-Stem",
+  "color": [
+   119,
+   159,
+   176
+  ],
+  "tissue": 7
+ },
+ {
+  "index": 13,
+  "fsLabel": 17,
+  "name": "Left-Hippocampus",
+  "color": [
+   220,
+   216,
+   20
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 14,
+  "fsLabel": 18,
+  "name": "Left-Amygdala",
+  "color": [
+   103,
+   255,
+   255
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 15,
+  "fsLabel": 24,
+  "name": "CSF",
+  "color": [
+   60,
+   60,
+   60
+  ],
+  "tissue": 1
+ },
+ {
+  "index": 16,
+  "fsLabel": 26,
+  "name": "Left-Accumbens-area",
+  "color": [
+   255,
+   165,
+   0
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 17,
+  "fsLabel": 28,
+  "name": "Left-VentralDC",
+  "color": [
+   165,
+   42,
+   42
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 18,
+  "fsLabel": 30,
+  "name": "Left-vessel",
+  "color": [
+   160,
+   32,
+   240
+  ],
+  "tissue": 8
+ },
+ {
+  "index": 19,
+  "fsLabel": 31,
+  "name": "Left-choroid-plexus",
+  "color": [
+   0,
+   200,
+   200
+  ],
+  "tissue": 1
+ },
+ {
+  "index": 20,
+  "fsLabel": 41,
+  "name": "Right-Cerebral-White-Matter",
+  "color": [
+   0,
+   225,
+   0
+  ],
+  "tissue": 3
+ },
+ {
+  "index": 21,
+  "fsLabel": 43,
+  "name": "Right-Lateral-Ventricle",
+  "color": [
+   120,
+   18,
+   134
+  ],
+  "tissue": 1
+ },
+ {
+  "index": 22,
+  "fsLabel": 44,
+  "name": "Right-Inf-Lat-Vent",
+  "color": [
+   196,
+   58,
+   250
+  ],
+  "tissue": 1
+ },
+ {
+  "index": 23,
+  "fsLabel": 46,
+  "name": "Right-Cerebellum-White-Matter",
+  "color": [
+   220,
+   248,
+   164
+  ],
+  "tissue": 6
+ },
+ {
+  "index": 24,
+  "fsLabel": 47,
+  "name": "Right-Cerebellum-Cortex",
+  "color": [
+   230,
+   148,
+   34
+  ],
+  "tissue": 5
+ },
+ {
+  "index": 25,
+  "fsLabel": 49,
+  "name": "Right-Thalamus-Proper",
+  "color": [
+   0,
+   118,
+   14
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 26,
+  "fsLabel": 50,
+  "name": "Right-Caudate",
+  "color": [
+   122,
+   186,
+   220
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 27,
+  "fsLabel": 51,
+  "name": "Right-Putamen",
+  "color": [
+   236,
+   13,
+   176
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 28,
+  "fsLabel": 52,
+  "name": "Right-Pallidum",
+  "color": [
+   13,
+   48,
+   255
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 29,
+  "fsLabel": 53,
+  "name": "Right-Hippocampus",
+  "color": [
+   220,
+   216,
+   20
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 30,
+  "fsLabel": 54,
+  "name": "Right-Amygdala",
+  "color": [
+   103,
+   255,
+   255
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 31,
+  "fsLabel": 58,
+  "name": "Right-Accumbens-area",
+  "color": [
+   255,
+   165,
+   0
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 32,
+  "fsLabel": 60,
+  "name": "Right-VentralDC",
+  "color": [
+   165,
+   42,
+   42
+  ],
+  "tissue": 4
+ },
+ {
+  "index": 33,
+  "fsLabel": 62,
+  "name": "Right-vessel",
+  "color": [
+   160,
+   32,
+   240
+  ],
+  "tissue": 8
+ },
+ {
+  "index": 34,
+  "fsLabel": 63,
+  "name": "Right-choroid-plexus",
+  "color": [
+   0,
+   200,
+   221
+  ],
+  "tissue": 1
+ },
+ {
+  "index": 35,
+  "fsLabel": 77,
+  "name": "WM-hypointensities",
+  "color": [
+   200,
+   70,
+   255
+  ],
+  "tissue": 3
+ },
+ {
+  "index": 36,
+  "fsLabel": 85,
+  "name": "Optic-Chiasm",
+  "color": [
+   234,
+   169,
+   30
+  ],
+  "tissue": 7
+ },
+ {
+  "index": 37,
+  "fsLabel": 251,
+  "name": "CC_Posterior",
+  "color": [
+   0,
+   0,
+   64
+  ],
+  "tissue": 3
+ },
+ {
+  "index": 38,
+  "fsLabel": 252,
+  "name": "CC_Mid_Posterior",
+  "color": [
+   0,
+   0,
+   112
+  ],
+  "tissue": 3
+ },
+ {
+  "index": 39,
+  "fsLabel": 253,
+  "name": "CC_Central",
+  "color": [
+   0,
+   0,
+   160
+  ],
+  "tissue": 3
+ },
+ {
+  "index": 40,
+  "fsLabel": 254,
+  "name": "CC_Mid_Anterior",
+  "color": [
+   0,
+   0,
+   208
+  ],
+  "tissue": 3
+ },
+ {
+  "index": 41,
+  "fsLabel": 255,
+  "name": "CC_Anterior",
+  "color": [
+   0,
+   0,
+   255
+  ],
+  "tissue": 3
+ },
+ {
+  "index": 42,
+  "fsLabel": 1000,
+  "name": "ctx-lh-unknown",
+  "color": [
+   25,
+   5,
+   25
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 43,
+  "fsLabel": 1001,
+  "name": "ctx-lh-bankssts",
+  "color": [
+   25,
+   100,
+   40
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 44,
+  "fsLabel": 1002,
+  "name": "ctx-lh-caudalanteriorcingulate",
+  "color": [
+   125,
+   100,
+   160
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 45,
+  "fsLabel": 1003,
+  "name": "ctx-lh-caudalmiddlefrontal",
+  "color": [
+   100,
+   25,
+   0
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 46,
+  "fsLabel": 1004,
+  "name": "ctx-lh-corpuscallosum",
+  "color": [
+   120,
+   70,
+   50
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 47,
+  "fsLabel": 1005,
+  "name": "ctx-lh-cuneus",
+  "color": [
+   220,
+   20,
+   100
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 48,
+  "fsLabel": 1006,
+  "name": "ctx-lh-entorhinal",
+  "color": [
+   220,
+   20,
+   10
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 49,
+  "fsLabel": 1007,
+  "name": "ctx-lh-fusiform",
+  "color": [
+   180,
+   220,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 50,
+  "fsLabel": 1008,
+  "name": "ctx-lh-inferiorparietal",
+  "color": [
+   220,
+   60,
+   220
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 51,
+  "fsLabel": 1009,
+  "name": "ctx-lh-inferiortemporal",
+  "color": [
+   180,
+   40,
+   120
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 52,
+  "fsLabel": 1010,
+  "name": "ctx-lh-isthmuscingulate",
+  "color": [
+   140,
+   20,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 53,
+  "fsLabel": 1011,
+  "name": "ctx-lh-lateraloccipital",
+  "color": [
+   20,
+   30,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 54,
+  "fsLabel": 1012,
+  "name": "ctx-lh-lateralorbitofrontal",
+  "color": [
+   35,
+   75,
+   50
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 55,
+  "fsLabel": 1013,
+  "name": "ctx-lh-lingual",
+  "color": [
+   225,
+   140,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 56,
+  "fsLabel": 1014,
+  "name": "ctx-lh-medialorbitofrontal",
+  "color": [
+   200,
+   35,
+   75
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 57,
+  "fsLabel": 1015,
+  "name": "ctx-lh-middletemporal",
+  "color": [
+   160,
+   100,
+   50
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 58,
+  "fsLabel": 1016,
+  "name": "ctx-lh-parahippocampal",
+  "color": [
+   20,
+   220,
+   60
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 59,
+  "fsLabel": 1017,
+  "name": "ctx-lh-paracentral",
+  "color": [
+   60,
+   220,
+   60
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 60,
+  "fsLabel": 1018,
+  "name": "ctx-lh-parsopercularis",
+  "color": [
+   220,
+   180,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 61,
+  "fsLabel": 1019,
+  "name": "ctx-lh-parsorbitalis",
+  "color": [
+   20,
+   100,
+   50
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 62,
+  "fsLabel": 1020,
+  "name": "ctx-lh-parstriangularis",
+  "color": [
+   220,
+   60,
+   20
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 63,
+  "fsLabel": 1021,
+  "name": "ctx-lh-pericalcarine",
+  "color": [
+   120,
+   100,
+   60
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 64,
+  "fsLabel": 1022,
+  "name": "ctx-lh-postcentral",
+  "color": [
+   220,
+   20,
+   20
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 65,
+  "fsLabel": 1023,
+  "name": "ctx-lh-posteriorcingulate",
+  "color": [
+   220,
+   180,
+   220
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 66,
+  "fsLabel": 1024,
+  "name": "ctx-lh-precentral",
+  "color": [
+   60,
+   20,
+   220
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 67,
+  "fsLabel": 1025,
+  "name": "ctx-lh-precuneus",
+  "color": [
+   160,
+   140,
+   180
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 68,
+  "fsLabel": 1026,
+  "name": "ctx-lh-rostralanteriorcingulate",
+  "color": [
+   80,
+   20,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 69,
+  "fsLabel": 1027,
+  "name": "ctx-lh-rostralmiddlefrontal",
+  "color": [
+   75,
+   50,
+   125
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 70,
+  "fsLabel": 1028,
+  "name": "ctx-lh-superiorfrontal",
+  "color": [
+   20,
+   220,
+   160
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 71,
+  "fsLabel": 1029,
+  "name": "ctx-lh-superiorparietal",
+  "color": [
+   20,
+   180,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 72,
+  "fsLabel": 1030,
+  "name": "ctx-lh-superiortemporal",
+  "color": [
+   140,
+   220,
+   220
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 73,
+  "fsLabel": 1031,
+  "name": "ctx-lh-supramarginal",
+  "color": [
+   80,
+   160,
+   20
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 74,
+  "fsLabel": 1032,
+  "name": "ctx-lh-frontalpole",
+  "color": [
+   100,
+   0,
+   100
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 75,
+  "fsLabel": 1033,
+  "name": "ctx-lh-temporalpole",
+  "color": [
+   70,
+   70,
+   70
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 76,
+  "fsLabel": 1034,
+  "name": "ctx-lh-transversetemporal",
+  "color": [
+   150,
+   150,
+   200
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 77,
+  "fsLabel": 1035,
+  "name": "ctx-lh-insula",
+  "color": [
+   255,
+   192,
+   32
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 78,
+  "fsLabel": 2000,
+  "name": "ctx-rh-unknown",
+  "color": [
+   25,
+   5,
+   25
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 79,
+  "fsLabel": 2001,
+  "name": "ctx-rh-bankssts",
+  "color": [
+   25,
+   100,
+   40
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 80,
+  "fsLabel": 2002,
+  "name": "ctx-rh-caudalanteriorcingulate",
+  "color": [
+   125,
+   100,
+   160
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 81,
+  "fsLabel": 2003,
+  "name": "ctx-rh-caudalmiddlefrontal",
+  "color": [
+   100,
+   25,
+   0
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 82,
+  "fsLabel": 2004,
+  "name": "ctx-rh-corpuscallosum",
+  "color": [
+   120,
+   70,
+   50
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 83,
+  "fsLabel": 2005,
+  "name": "ctx-rh-cuneus",
+  "color": [
+   220,
+   20,
+   100
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 84,
+  "fsLabel": 2006,
+  "name": "ctx-rh-entorhinal",
+  "color": [
+   220,
+   20,
+   10
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 85,
+  "fsLabel": 2007,
+  "name": "ctx-rh-fusiform",
+  "color": [
+   180,
+   220,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 86,
+  "fsLabel": 2008,
+  "name": "ctx-rh-inferiorparietal",
+  "color": [
+   220,
+   60,
+   220
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 87,
+  "fsLabel": 2009,
+  "name": "ctx-rh-inferiortemporal",
+  "color": [
+   180,
+   40,
+   120
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 88,
+  "fsLabel": 2010,
+  "name": "ctx-rh-isthmuscingulate",
+  "color": [
+   140,
+   20,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 89,
+  "fsLabel": 2011,
+  "name": "ctx-rh-lateraloccipital",
+  "color": [
+   20,
+   30,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 90,
+  "fsLabel": 2012,
+  "name": "ctx-rh-lateralorbitofrontal",
+  "color": [
+   35,
+   75,
+   50
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 91,
+  "fsLabel": 2013,
+  "name": "ctx-rh-lingual",
+  "color": [
+   225,
+   140,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 92,
+  "fsLabel": 2014,
+  "name": "ctx-rh-medialorbitofrontal",
+  "color": [
+   200,
+   35,
+   75
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 93,
+  "fsLabel": 2015,
+  "name": "ctx-rh-middletemporal",
+  "color": [
+   160,
+   100,
+   50
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 94,
+  "fsLabel": 2016,
+  "name": "ctx-rh-parahippocampal",
+  "color": [
+   20,
+   220,
+   60
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 95,
+  "fsLabel": 2017,
+  "name": "ctx-rh-paracentral",
+  "color": [
+   60,
+   220,
+   60
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 96,
+  "fsLabel": 2018,
+  "name": "ctx-rh-parsopercularis",
+  "color": [
+   220,
+   180,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 97,
+  "fsLabel": 2019,
+  "name": "ctx-rh-parsorbitalis",
+  "color": [
+   20,
+   100,
+   50
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 98,
+  "fsLabel": 2020,
+  "name": "ctx-rh-parstriangularis",
+  "color": [
+   220,
+   60,
+   20
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 99,
+  "fsLabel": 2021,
+  "name": "ctx-rh-pericalcarine",
+  "color": [
+   120,
+   100,
+   60
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 100,
+  "fsLabel": 2022,
+  "name": "ctx-rh-postcentral",
+  "color": [
+   220,
+   20,
+   20
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 101,
+  "fsLabel": 2023,
+  "name": "ctx-rh-posteriorcingulate",
+  "color": [
+   220,
+   180,
+   220
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 102,
+  "fsLabel": 2024,
+  "name": "ctx-rh-precentral",
+  "color": [
+   60,
+   20,
+   220
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 103,
+  "fsLabel": 2025,
+  "name": "ctx-rh-precuneus",
+  "color": [
+   160,
+   140,
+   180
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 104,
+  "fsLabel": 2026,
+  "name": "ctx-rh-rostralanteriorcingulate",
+  "color": [
+   80,
+   20,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 105,
+  "fsLabel": 2027,
+  "name": "ctx-rh-rostralmiddlefrontal",
+  "color": [
+   75,
+   50,
+   125
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 106,
+  "fsLabel": 2028,
+  "name": "ctx-rh-superiorfrontal",
+  "color": [
+   20,
+   220,
+   160
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 107,
+  "fsLabel": 2029,
+  "name": "ctx-rh-superiorparietal",
+  "color": [
+   20,
+   180,
+   140
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 108,
+  "fsLabel": 2030,
+  "name": "ctx-rh-superiortemporal",
+  "color": [
+   140,
+   220,
+   220
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 109,
+  "fsLabel": 2031,
+  "name": "ctx-rh-supramarginal",
+  "color": [
+   80,
+   160,
+   20
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 110,
+  "fsLabel": 2032,
+  "name": "ctx-rh-frontalpole",
+  "color": [
+   100,
+   0,
+   100
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 111,
+  "fsLabel": 2033,
+  "name": "ctx-rh-temporalpole",
+  "color": [
+   70,
+   70,
+   70
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 112,
+  "fsLabel": 2034,
+  "name": "ctx-rh-transversetemporal",
+  "color": [
+   150,
+   150,
+   200
+  ],
+  "tissue": 2
+ },
+ {
+  "index": 113,
+  "fsLabel": 2035,
+  "name": "ctx-rh-insula",
+  "color": [
+   255,
+   192,
+   32
+  ],
+  "tissue": 2
+ }
+]

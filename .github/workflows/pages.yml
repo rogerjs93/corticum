@@ -1,0 +1,61 @@
+name: Deploy to GitHub Pages
+
+# Builds and publishes dist/ on every push to main.
+#
+# vite.config.ts sets `base: './'`, so the bundle is servable from any subpath
+# and this needs no repo-name substitution — the same dist/ works on a project
+# site, a user site, or `vite preview` locally.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel a running publish half way; queue instead.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Local development is pinned to Node 20.15 (which is why Vite is
+          # held at 6.x), so build on the same major.
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      # Type errors and lint failures should stop a publish, not ship.
+      - run: npm run lint
+      - run: npm run build
+
+      # `npm run wgsl` is deliberately NOT run here. It validates shaders
+      # through Dawn's native bindings against a real adapter; on a headless CI
+      # runner that is either unavailable or falls back to a software adapter,
+      # so a pass would mean less than it does locally and a failure would be
+      # about the runner rather than the shaders. Run it on the dev machine.
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

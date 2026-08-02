@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "no-underscore-dangle": [
+      "warn",
+      {
+        "allow": ["__BUILD__", "__corticum"]
+      }
+    ]
+  },
+  "ignorePatterns": ["dist", "node_modules", "public"]
+}
