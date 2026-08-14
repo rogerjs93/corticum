@@ -98,6 +98,10 @@ uniform uOnsetHours : f32;
 // Side-by-side comparison: 0 = off, 1 = split. uSplitX is the divider in NDC.
 uniform uSplitMode : f32;
 uniform uSplitX : f32;
+// 0 = tumour, 1 = haemorrhage. The mass operator is shared; only the tissue is
+// different, and that difference is almost the whole of ICH diagnosis.
+uniform uLesionIsBlood : f32;
+uniform uIctusHours : f32;
 
 /// Whether the disease operators apply to the pixel being shaded.
 ///
@@ -315,6 +319,48 @@ fn eegAt(p : vec3<f32>, n : vec3<f32>) -> f32 {
 /// Note CT inverts the T1 relationship: grey matter is DENSER than white, so
 /// GM is brighter, which is what makes "loss of grey-white differentiation" the
 /// earliest CT sign of infarction.
+/// How blood looks, per modality, as a function of its age.
+///
+/// This is the single most-taught signal evolution in neuroradiology, because
+/// it DATES a haemorrhage — and it is genuinely counter-intuitive: blood is
+/// obvious on CT immediately and fades over weeks, while on T1 it starts
+/// unremarkable and only turns bright after days.
+///
+///   CT     hyperdense at once (~60-80 HU against ~35 for brain) and the reason
+///          a non-contrast CT is the first test in any suspected stroke: it
+///          answers "bleed or not" in seconds, which decides whether
+///          thrombolysis would kill the patient.
+///          Fades to isodense over 1-2 weeks and eventually hypodense.
+///   T1     iso/slightly dark while oxy- and deoxy-haemoglobin (< ~3 days),
+///          then BRIGHT as intracellular methaemoglobin forms, for weeks.
+///   T2     bright very early (oxy-Hb is a liquid), then profoundly DARK as
+///          deoxy- and intracellular met-Hb appear, then bright again in the
+///          chronic phase with a dark hemosiderin rim that persists for life.
+///
+/// Returned as an additive signed delta on the modality intensity, so a
+/// haematoma reads against whatever tissue it displaced.
+fn bloodSignal(mode : f32, hours : f32) -> f32 {
+  let days = hours / 24.0;
+  if (mode > 4.5) {
+    // CT: immediate, then slow washout.
+    return 0.55 * (1.0 - smoothstep(4.0, 14.0, days));
+  }
+  if (mode < 1.5) {
+    // T1: the late-brightening one.
+    return 0.45 * smoothstep(2.0, 5.0, days) * (1.0 - smoothstep(20.0, 45.0, days))
+         - 0.10 * (1.0 - smoothstep(0.5, 3.0, days));
+  }
+  if (mode < 2.5 || mode < 3.5) {
+    // T2 and FLAIR: bright, then very dark, then bright again.
+    let hyperacute = 0.35 * (1.0 - smoothstep(0.2, 1.0, days));
+    let deoxyDark = -0.45 * smoothstep(0.5, 1.5, days) * (1.0 - smoothstep(8.0, 16.0, days));
+    let chronic = 0.30 * smoothstep(14.0, 30.0, days);
+    return hyperacute + deoxyDark + chronic;
+  }
+  // DWI: a haematoma is dark-ish and blooms; not the sequence you use for it.
+  return -0.15;
+}
+
 fn modalityIntensity(p : vec3<f32>, mode : f32, hours : f32) -> f32 {
     let props = propsAt(p);
     let path = lesionAt(p);
@@ -377,10 +423,69 @@ fn modalityIntensity(p : vec3<f32>, mode : f32, hours : f32) -> f32 {
         i = i - 0.10 * edema;
         i = i - 0.09 * core * ctPos;
         i = mix(i, 0.10, cavity);
-        // A mass lesion reads as a hyperdense mass; blood is the classic case.
-        i = i + 0.35 * mass;
+        // A tumour is mildly hyperdense; blood is dramatically so, and that is
+        // handled below where its age can be taken into account.
+        i = i + 0.12 * mass;
+    }
+
+    // Blood carries its own signal, and it DATES the bleed — see bloodSignal.
+    // Applied last so it overrides the tissue it displaced rather than blending
+    // with it: a haematoma is not partly brain.
+    if (uniforms.uLesionIsBlood > 0.5 && mass > 0.01) {
+        i = i + bloodSignal(mode, uniforms.uIctusHours) * mass;
     }
     return clamp(i, 0.0, 1.0);
+}
+
+/// Perfusion maps: rCBF, Tmax, and the core/penumbra mismatch.
+///
+/// These are the images that actually decide thrombectomy. DEFUSE-3 and DAWN
+/// select on core volume and MISMATCH RATIO, not on how the brain looks, so a
+/// stroke teaching tool that shows only anatomy stops one step short of the
+/// decision. Everything here is a re-reading of the stroke field the renderer
+/// already computes: rCBF is 1 - deficit, and Tmax rises with it.
+///
+/// Colour conventions are deliberately the clinical ones rather than the
+/// perceptually-uniform ramp used for qEEG. A perfusion map is READ by
+/// pattern-recognition against thousands of prior scans — RAPID's magenta core
+/// on a green penumbra is the thing a stroke clinician recognises instantly,
+/// and inventing a prettier encoding would make it less legible, not more.
+/// This is the one place where matching an existing convention beats good
+/// colourmap practice.
+///
+/// NOT calibrated. rCBF here is a normalised deficit, not a measured
+/// millilitre-per-100g-per-minute, and Tmax is not a deconvolved bolus delay.
+fn perfusionColor(p : vec3<f32>, mode : f32) -> vec3<f32> {
+    let sk = strokeAt(p);
+    let deficit = clamp(sk.x, 0.0, 1.0);
+    let rcbf = 1.0 - deficit;
+
+    if (mode < 6.5) {
+        // rCBF: rainbow, red = high flow, blue = none.
+        let t = clamp(rcbf, 0.0, 1.0);
+        if (t < 0.25) { return mix(vec3<f32>(0.05, 0.02, 0.25), vec3<f32>(0.05, 0.25, 0.85), t / 0.25); }
+        if (t < 0.5)  { return mix(vec3<f32>(0.05, 0.25, 0.85), vec3<f32>(0.10, 0.80, 0.35), (t - 0.25) / 0.25); }
+        if (t < 0.75) { return mix(vec3<f32>(0.10, 0.80, 0.35), vec3<f32>(0.95, 0.85, 0.15), (t - 0.5) / 0.25); }
+        return mix(vec3<f32>(0.95, 0.85, 0.15), vec3<f32>(0.90, 0.15, 0.10), (t - 0.75) / 0.25);
+    }
+    if (mode < 7.5) {
+        // Tmax: the delay map, so the scale runs the other way — long delay is
+        // hot. The 6 s threshold that defines the hypoperfused volume sits at
+        // deficit ~0.35, matching the penumbra threshold used by the operator.
+        let t = clamp(deficit, 0.0, 1.0);
+        if (t < 0.35) { return mix(vec3<f32>(0.06, 0.10, 0.16), vec3<f32>(0.10, 0.45, 0.75), t / 0.35); }
+        if (t < 0.7)  { return mix(vec3<f32>(0.10, 0.45, 0.75), vec3<f32>(0.95, 0.80, 0.20), (t - 0.35) / 0.35); }
+        return mix(vec3<f32>(0.95, 0.80, 0.20), vec3<f32>(0.92, 0.12, 0.10), (t - 0.7) / 0.3);
+    }
+
+    // Mismatch, in the RAPID convention: magenta core inside a green penumbra.
+    // The visible green rim IS the target of treatment — tissue still alive.
+    let core = clamp(sk.y, 0.0, 1.0);
+    let pen = clamp(sk.z, 0.0, 1.0);
+    var c = vec3<f32>(0.16, 0.17, 0.20);
+    c = mix(c, vec3<f32>(0.15, 0.80, 0.30), pen);
+    c = mix(c, vec3<f32>(0.85, 0.10, 0.70), core);
+    return c;
 }
 
 /// Sequential blue -> cyan -> yellow -> red ramp.
@@ -736,7 +841,11 @@ fn main(input : FragmentInputs) -> FragmentOutputs {
     // A faint geometric term survives on non-cut surfaces only so a 3D view
     // stays legible; on a cut face the intensity is left completely flat, which
     // is what a slice actually looks like.
-    if (uniforms.uModality > 0.5) {
+    if (uniforms.uModality > 5.5) {
+        // Perfusion maps are colour, not intensity.
+        let shade = select(0.85 + 0.15 * max(dot(n, key), 0.0), 1.0, march.cut);
+        col = perfusionColor(hitPos, uniforms.uModality) * shade;
+    } else if (uniforms.uModality > 0.5) {
         let mi = modalityIntensity(hitPos, uniforms.uModality, uniforms.uOnsetHours);
         let shade = select(0.82 + 0.18 * max(dot(n, key), 0.0), 1.0, march.cut);
         col = vec3<f32>(mi * shade);

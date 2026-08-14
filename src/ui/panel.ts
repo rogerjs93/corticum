@@ -17,6 +17,10 @@ const MODALITY_NOTE: Record<Exclude<Modality, 'anatomic'>, string> = {
     'T2 with CSF nulled — the sequence for periventricular MS plaques. Stays NEGATIVE for the first ~4.5 h of a stroke.',
   dwi: 'Restricted diffusion: bright within MINUTES of onset, fading around day 10. DWI positive + FLAIR negative dates a stroke to inside the thrombolysis window.',
   ct: 'Attenuation. Grey matter is denser than white, so the relationship inverts — and an infarct is INVISIBLE for hours, which is why a normal CT does not exclude stroke.',
+  rcbf: 'Relative cerebral blood flow. Below 30% of the healthy side defines the irreversible CORE.',
+  tmax: 'Bolus delay. Above 6 s defines the hypoperfused tissue — core plus the penumbra still worth saving.',
+  mismatch:
+    'RAPID convention: magenta core inside a green penumbra. The green rim IS the treatment target, and its size relative to the core is what selects for thrombectomy.',
 };
 import type { EegBand } from '../eeg/project';
 
@@ -78,6 +82,29 @@ function evidenceTag(kind: Evidence): HTMLElement {
   return span;
 }
 
+/**
+ * A collapsible section.
+ *
+ * The panel outgrew a flat list once modality, perfusion, scales, split and
+ * export landed — nine features' worth of controls in one column, where the
+ * thing you want is always below the fold. Grouping them by WORKFLOW rather
+ * than by subsystem is what makes it navigable: you pick a scenario, place a
+ * lesion, read the numbers, choose how to image it, then move the camera.
+ *
+ * `<details>` rather than a custom widget: it is keyboard accessible and
+ * remembers nothing, which is correct — a panel that restores collapse state
+ * across reloads hides controls from someone who has just changed something.
+ */
+function makeSection(title: string, open = false) {
+  const root = el('details', 'cx-sec');
+  root.open = open;
+  const summary = el('summary', 'cx-h');
+  summary.textContent = title;
+  const body = el('div', 'cx-secbody');
+  root.append(summary, body);
+  return { root, body };
+}
+
 interface SliderOpts {
   min: number;
   max: number;
@@ -115,9 +142,65 @@ function slider(label: string, o: SliderOpts) {
 export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLElement {
   const root = el('div', 'cx-panel');
 
+  // ---- subject --------------------------------------------------------------
+  //
+  // First in the list but COLLAPSED and entirely optional. The bundled subject
+  // is already loaded and every feature works on it; this exists for someone
+  // who has their own FreeSurfer output. A panel that opens demanding a file
+  // would turn a working demo into a dead end.
+  const secSubject = makeSection('Subject · load your own (optional)');
+  const subjectNote = el(
+    'div',
+    'cx-note',
+    'Showing the bundled subject — everything below works right now. ' +
+      'To use your own brain, open a FreeSurfer aparc+aseg as .nii or .nii.gz.'
+  );
+  const fileInput = el('input', 'cx-select');
+  fileInput.type = 'file';
+  fileInput.accept = '.nii,.nii.gz,.gz';
+  const subjectStatus = el('div', 'cx-note');
+
+  fileInput.addEventListener('change', async () => {
+    const f = fileInput.files?.[0];
+    if (!f) return;
+    subjectStatus.textContent = 'reading…';
+    try {
+      const api = (window as unknown as {
+        __corticum?: {
+          loadSubjectFile?: (
+            file: File,
+            label?: string
+          ) => Promise<{ dims: number[]; voxelsInside: number; unmappedLabels: number[]; buildMs: number }>;
+        };
+      }).__corticum;
+      if (!api?.loadSubjectFile) throw new Error('loader unavailable');
+      const r = await api.loadSubjectFile(f, f.name);
+      subjectStatus.textContent =
+        `${f.name}: ${r.dims.join('x')} in ${(r.buildMs / 1000).toFixed(1)} s · ` +
+        `${(r.voxelsInside / 1000).toFixed(0)}k parenchyma voxels` +
+        (r.unmappedLabels.length
+          ? ` · ${r.unmappedLabels.length} label(s) not in the region table`
+          : '');
+    } catch (e) {
+      subjectStatus.textContent = `could not load: ${String(e)}`;
+    }
+  });
+
+  secSubject.body.append(
+    subjectNote,
+    fileInput,
+    subjectStatus,
+    el(
+      'div',
+      'cx-cite',
+      'Needs a completed FreeSurfer/FastSurfer recon — a raw T1 has no ' +
+        'parcellation, and region names, ASPECTS, territories and staging all ' +
+        'depend on one. The ventricular mesh still shows the bundled subject.'
+    )
+  );
+
   // ---- scenario + timeline -------------------------------------------------
-  const secTime = el('section', 'cx-sec');
-  secTime.append(el('h3', 'cx-h', 'Disease'));
+  const secTime = makeSection('1 · Scenario & time', true);
 
   const select = el('select', 'cx-select');
   select.append(new Option('— none (healthy) —', ''));
@@ -191,11 +274,17 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
     scheduleVolume();
   });
 
-  secTime.append(select, evRow, timeRow.root, transport, narrative, citation);
+  secTime.body.append(select, evRow, timeRow.root, transport, narrative, citation);
 
   // ---- region / group control ---------------------------------------------
-  const secRegion = el('section', 'cx-sec');
-  secRegion.append(el('h3', 'cx-h', 'Region'));
+  // Everything the model MEASURES, in one place. These were scattered across
+  // the sections that produced them, which meant the volume, the scales,
+  // ASPECTS and the perfusion numbers — all answers to "how bad is it" — were
+  // never visible together.
+  const secMeasure = makeSection('4 · Measurements', true);
+  const secExport = makeSection('7 · Export');
+
+  const secRegion = makeSection('3 · Regional control');
 
   const groupKind = el('select', 'cx-select cx-inline');
   for (const k of ['network', 'lobe', 'hemisphere']) {
@@ -342,15 +431,13 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   // volume that produced it.
   const scalesOut = el('div', 'cx-vol');
 
-  secRegion.append(
+  secRegion.body.append(
     groupRow,
     searchInput,
     searchHits,
     targetLabel,
     vulnRow.root,
     overrideRow.root,
-    volumeOut,
-    scalesOut,
     clearBtn
   );
 
@@ -360,8 +447,7 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   // side and collateral grade are the three things a stroke is actually
   // discussed in terms of, and the vascular tree exists so you can see which
   // branches a given site starves.
-  const secStroke = el('section', 'cx-sec');
-  secStroke.append(el('h3', 'cx-h', 'Stroke'));
+  const secStroke = makeSection('2 · Lesion', true);
 
   const siteSel = el('select', 'cx-select');
   siteSel.append(new Option('— no occlusion —', ''));
@@ -427,11 +513,13 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   // ASPECTS is the number that actually gates treatment, so it belongs next to
   // the controls that change it rather than buried in a console gate.
   const aspectsOut = el('div', 'cx-vol');
+  const perfusionOut = el('div', 'cx-vol');
   let aspectsTimer: number | undefined;
   let aspectsBusy = false;
   const scheduleAspects = () => {
     window.clearTimeout(aspectsTimer);
     aspectsOut.classList.add('cx-stale');
+    perfusionOut.classList.add('cx-stale');
     aspectsTimer = window.setTimeout(() => void refreshAspects(), 500);
   };
   async function refreshAspects() {
@@ -448,25 +536,138 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
           `<span class="${cls}">${r.score}</span><span class="cx-dim">/10</span> ` +
           `<span class="cx-dim">${r.lost.length ? `lost ${esc(r.lost.join(' '))}` : 'all regions intact'}</span>`;
       }
+      // Perfusion volumes ride on the same refresh: ASPECTS and the mismatch
+      // are the two numbers that select for treatment, and showing one without
+      // the other tells half the story.
+      const pf = await brain.measurePerfusion();
+      if (!pf) {
+        perfusionOut.textContent = '';
+      } else {
+        const ratio = Number.isFinite(pf.mismatchRatio)
+          ? pf.mismatchRatio.toFixed(1)
+          : '∞';
+        const verdict = pf.eligible
+          ? '<span class="cx-ok">meets DEFUSE-3</span>'
+          : `<span class="cx-loss">${esc(pf.reasons[0] ?? 'no target')}</span>`;
+        perfusionOut.innerHTML =
+          `<span class="cx-label">core</span> ${pf.coreMl.toFixed(0)} mL ` +
+          `<span class="cx-dim">·</span> <span class="cx-label">mismatch</span> ` +
+          `${pf.mismatchMl.toFixed(0)} mL (×${ratio}) ` +
+          `<span class="cx-dim">·</span> ${verdict}`;
+      }
       aspectsOut.classList.remove('cx-stale');
+      perfusionOut.classList.remove('cx-stale');
     } finally {
       aspectsBusy = false;
     }
   }
 
-  secStroke.append(
+  // ---- haemorrhage ----------------------------------------------------------
+  //
+  // Placed by STRUCTURE rather than by coordinates. Typing millimetres to put a
+  // bleed in the putamen is not how anyone thinks about it, and the region
+  // machinery for centroids and names already exists.
+  const bleedSel = el('select', 'cx-select');
+  bleedSel.append(new Option('— no haemorrhage —', '-1'));
+  // Deep grey and lobar sites, which is where spontaneous ICH actually happens.
+  const ICH_SITES = [
+    'Left-Putamen', 'Right-Putamen',
+    'Left-Thalamus', 'Right-Thalamus',
+    'Left-Caudate', 'Right-Caudate',
+    'Left-Cerebellum-Cortex', 'Right-Cerebellum-Cortex',
+    'Brain-Stem',
+    'ctx-lh-superiorfrontal', 'ctx-rh-superiorfrontal',
+    'ctx-lh-superiortemporal', 'ctx-rh-superiortemporal',
+  ];
+  for (const name of ICH_SITES) {
+    const r = regions.find((x) => x.name === name || x.name === `${name}-Proper`);
+    // Keep the hemisphere: stripping the ctx-lh-/ctx-rh- prefix left two
+    // entries both reading "superiorfrontal", which is unusable.
+    if (r) {
+      bleedSel.append(
+        new Option(name.replace(/^ctx-lh-/, 'Left ').replace(/^ctx-rh-/, 'Right '), String(r.index))
+      );
+    }
+  }
+
+  const bleedNote = el('div', 'cx-note');
+
+  const applyBleed = async () => {
+    const idx = Number(bleedSel.value);
+    if (idx < 0) {
+      bleedNote.textContent = '';
+      await brain.applyDisease({ mass: { enabled: false } });
+      scheduleVolume();
+      return;
+    }
+    const centre = brain.regionCentroid(idx);
+    if (!centre) {
+      bleedNote.textContent = 'that structure is not present in this subject';
+      return;
+    }
+    const region = regions[idx];
+    bleedNote.textContent =
+      `${region?.name ?? idx} · centroid ${centre.map((v) => v.toFixed(0)).join(', ')} mm`;
+    await brain.applyDisease({
+      mass: {
+        enabled: true,
+        kind: 'haemorrhage',
+        centre,
+        radiusMm: Number(bleedSizeRow.input.value),
+        density: Number(bleedDensityRow.input.value),
+        irregularity: Number(bleedIrregRow.input.value),
+        targetRegion: idx,
+        hoursSinceIctus: Number(bleedHoursRow.input.value),
+        necrosis: 0.85,
+        edemaExtentMm: 6 + 14 * Number(bleedHoursRow.input.value) / 96,
+        edemaStrength: 0.9,
+      },
+    });
+    scheduleVolume();
+    scheduleAspects();
+  };
+
+  const bleedSizeRow = slider('clot radius', {
+    min: 4, max: 34, step: 1, value: 15,
+    format: (v) => `${v} mm ≈ ${((4 / 3) * Math.PI * v ** 3 / 1000).toFixed(0)} mL`,
+    onInput: () => void applyBleed(),
+  });
+  const bleedDensityRow = slider('density', {
+    min: 0.2, max: 1, step: 0.05, value: 1,
+    format: (v) => (v > 0.85 ? 'dense clot' : v > 0.5 ? 'mixed' : 'liquefying'),
+    onInput: () => void applyBleed(),
+  });
+  const bleedIrregRow = slider('irregularity', {
+    min: 0, max: 1, step: 0.05, value: 0.55,
+    format: (v) => (v < 0.05 ? 'spherical' : v < 0.5 ? 'lobulated' : 'irregular'),
+    onInput: () => void applyBleed(),
+  });
+  const bleedHoursRow = slider('hours since ictus', {
+    min: 0, max: 336, step: 1, value: 6,
+    format: (v) => (v < 48 ? `${v} h` : `${(v / 24).toFixed(1)} d`),
+    onInput: () => void applyBleed(),
+  });
+  bleedSel.addEventListener('change', () => void applyBleed());
+
+  secStroke.body.append(
+    el('div', 'cx-label', 'Ischaemic'),
     siteSel,
     strokeRow,
-    evidenceTag('plausible-approximation'),
     collatRow.root,
     onsetRow.root,
-    aspectsOut,
-    syndrome
+    syndrome,
+    el('div', 'cx-label', 'Haemorrhagic'),
+    bleedSel,
+    bleedSizeRow.root,
+    bleedDensityRow.root,
+    bleedIrregRow.root,
+    bleedHoursRow.root,
+    bleedNote,
+    evidenceTag('plausible-approximation')
   );
 
   // ---- patient (stroke_qeeg) ----------------------------------------------
-  const secPatient = el('section', 'cx-sec');
-  secPatient.append(el('h3', 'cx-h', 'Patient (stroke_qeeg)'));
+  const secPatient = makeSection('6 · Patient data (stroke_qeeg)');
 
   const patientSel = el('select', 'cx-select');
   patientSel.append(new Option('— none —', ''));
@@ -538,17 +739,17 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
 
   void loadPresets(import.meta.env.BASE_URL).then((doc) => {
     if (!doc) {
-      secPatient.append(el('div', 'cx-note', 'presets.json not built'));
+      secPatient.body.append(el('div', 'cx-note', 'presets.json not built'));
       return;
     }
     presets = doc.presets;
     for (const p of presets) {
       patientSel.append(new Option(`${p.id} — ${p.location}`, p.id));
     }
-    secPatient.append(el('div', 'cx-note', doc.limitation));
+    secPatient.body.append(el('div', 'cx-note', doc.limitation));
   });
 
-  secPatient.append(
+  secPatient.body.append(
     patientSel,
     clinical,
     caveat,
@@ -557,8 +758,11 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   );
 
   // ---- view ---------------------------------------------------------------
-  const secView = el('section', 'cx-sec');
-  secView.append(el('h3', 'cx-h', 'View'));
+  // Split in two: choosing HOW to image the field is a different job from
+  // moving the camera through it, and bundling them put the modality selector
+  // below three lens sliders.
+  const secView = makeSection('5 · Imaging', true);
+  const secNav = makeSection('5b · Navigation');
 
   const modeRow = slider('x-ray', {
     min: 0,
@@ -579,6 +783,9 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
     ['flair', 'MRI FLAIR'],
     ['dwi', 'MRI DWI'],
     ['ct', 'CT'],
+    ['rcbf', 'Perfusion — rCBF'],
+    ['tmax', 'Perfusion — Tmax'],
+    ['mismatch', 'Perfusion — mismatch'],
   ] as const) {
     modalitySel.append(new Option(label, v));
   }
@@ -755,22 +962,23 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
     },
   });
 
-  secView.append(
-    modeRow.root,
+  secView.body.append(
     modalitySel,
     modalityNote,
+    modeRow.root,
     sliceAxis,
+    splitRow,
+    splitPos.root,
+    splitNote
+  );
+
+  secNav.body.append(
     cutRowTop,
     cutOffset.root,
     lensRow.root,
     lensMagRow.root,
     lensSizeRow.root,
     fisheyeRow.root,
-    splitRow,
-    splitPos.root,
-    splitNote,
-    exportBtn,
-    exportNote,
     ventBtn
   );
 
@@ -828,7 +1036,20 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
     }
   }
 
-  root.append(secTime, secRegion, secStroke, secPatient, secView);
+  secMeasure.body.append(volumeOut, scalesOut, aspectsOut, perfusionOut);
+  secExport.body.append(exportBtn, exportNote);
+
+  root.append(
+    secSubject.root,
+    secTime.root,
+    secStroke.root,
+    secRegion.root,
+    secMeasure.root,
+    secView.root,
+    secNav.root,
+    secPatient.root,
+    secExport.root
+  );
 
   // Initial state.
   applyHighlight();

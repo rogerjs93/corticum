@@ -10,10 +10,10 @@ import type { Mesh } from '@babylonjs/core/Meshes/mesh';
 import '@babylonjs/core/Engines/WebGPU/Extensions/engine.computeShader';
 
 import { resolveWgsl } from '../engine/wgsl';
-import { loadField, type LoadedField } from '../fields/loader';
+import { loadField, type LoadedField, type FieldOverride } from '../fields/loader';
 import { buildDerived, type DerivedFields } from '../fields/derived';
 import { createOperators, type OperatorFields } from '../fields/operators';
-import { defaultDiseaseState, type DiseaseState } from '../disease/types';
+import { defaultDiseaseState, type DiseaseState, type DiseasePatch } from '../disease/types';
 import { Picker, type PickResult } from '../render/picking';
 import { VolumeProbe } from '../verify/volumeProbe';
 import { RegionModifiers } from '../disease/regions';
@@ -34,9 +34,14 @@ import {
 } from '../disease/scales';
 import { AspectsProbe, type AspectsResult } from '../verify/aspectsProbe';
 import { ExportProbe, type ExportResult } from '../export/exportProbe';
+import { PerfusionProbe, type PerfusionResult } from '../verify/perfusionProbe';
 
 /** Synthetic radiological contrast modes. */
-export type Modality = 'anatomic' | 't1' | 't2' | 'flair' | 'dwi' | 'ct';
+export type Modality =
+  | 'anatomic' | 't1' | 't2' | 'flair' | 'dwi' | 'ct'
+  // Perfusion maps: colour rather than intensity, and the basis of the
+  // thrombectomy decision rather than of the diagnosis.
+  | 'rcbf' | 'tmax' | 'mismatch';
 
 export interface BrainScene {
   scene: Scene;
@@ -70,10 +75,14 @@ export interface BrainScene {
   captureBaseline: () => Promise<void>;
   /** Clinical visual rating scales derived from measured volume. */
   measureScales: () => Promise<ScaleResult[] | null>;
+  /** Centre of mass of a region in world mm, or null if absent in this subject. */
+  regionCentroid: (regionIndex: number) => [number, number, number] | null;
   /** ASPECTS for the affected hemisphere; null when no stroke is active. */
   measureAspects: () => Promise<AspectsResult | null>;
   /** Emit ground-truth NIfTI volumes for the current state. */
   exportNifti: (gridDim?: number) => Promise<ExportResult>;
+  /** Core / hypoperfusion volumes and DEFUSE-3 eligibility; null with no stroke. */
+  measurePerfusion: () => Promise<PerfusionResult | null>;
   setScenario: (id: string | null) => Promise<void>;
   setTime: (t: number) => void;
   play: (on: boolean) => void;
@@ -95,7 +104,7 @@ export interface BrainScene {
   lastPick: () => PickResult | null;
   disease: DiseaseState;
   modifiers: RegionModifiers;
-  applyDisease: (patch?: Partial<DiseaseState>) => Promise<number>;
+  applyDisease: (patch?: DiseasePatch) => Promise<number>;
   /** 0 = specimen, 1 = x-ray; cross-faded. */
   setMode: (m: number) => void;
   toggleMode: () => void;
@@ -109,7 +118,8 @@ export async function createBrainScene(
   engine: WebGPUEngine,
   canvas: HTMLCanvasElement,
   subject: string,
-  dim: number
+  dim: number,
+  override?: FieldOverride
 ): Promise<BrainScene> {
   const scene = new Scene(engine);
   scene.clearColor = new Color4(0.035, 0.04, 0.05, 1);
@@ -121,7 +131,7 @@ export async function createBrainScene(
     scene.setRenderingAutoClearDepthStencil(group, false);
   }
 
-  const field = await loadField(scene, subject, dim);
+  const field = await loadField(scene, subject, dim, override);
   const half = field.manifest.grid.halfExtentMm;
 
   // Everything below this line is constructed on the GPU from the ~2 MB
@@ -194,6 +204,8 @@ export async function createBrainScene(
         'uOnsetHours',
         'uSplitMode',
         'uSplitX',
+        'uLesionIsBlood',
+        'uIctusHours',
         'uSliceOnly',
         'uFisheye',
         'uFisheyeFov',
@@ -437,7 +449,9 @@ export async function createBrainScene(
   material.setFloat('uEegOpacity', 0);
 
   // ---- radiological modality ------------------------------------------------
-  const MODALITIES = ['anatomic', 't1', 't2', 'flair', 'dwi', 'ct'] as const;
+  const MODALITIES = [
+    'anatomic', 't1', 't2', 'flair', 'dwi', 'ct', 'rcbf', 'tmax', 'mismatch',
+  ] as const;
   let modality: Modality = 'anatomic';
   material.setFloat('uModality', 0);
   material.setFloat('uOnsetHours', 0);
@@ -446,6 +460,8 @@ export async function createBrainScene(
   let split = { on: false, x: 0 };
   material.setFloat('uSplitMode', 0);
   material.setFloat('uSplitX', 0);
+  material.setFloat('uLesionIsBlood', 0);
+  material.setFloat('uIctusHours', 0);
 
   /**
    * Show the same brain healthy on one side of a divider and diseased on the
@@ -464,6 +480,9 @@ export async function createBrainScene(
     // Conspicuity is time-dependent, so the shader needs the clock even though
     // the stroke field itself already encodes the lesion.
     material.setFloat('uOnsetHours', disease.stroke.hoursSinceOnset);
+    // Blood signal dates the bleed, so the shader needs the ictus clock too.
+    material.setFloat('uLesionIsBlood', disease.mass.kind === 'haemorrhage' ? 1 : 0);
+    material.setFloat('uIctusHours', disease.mass.hoursSinceIctus);
   };
 
   // Fire and forget: the qEEG payload is ~160 kB of JSON and nothing on screen
@@ -545,7 +564,7 @@ export async function createBrainScene(
    * Only called when a parameter changes, never per frame: the composed field
    * is what the raymarch reads, and rebuilding it is ~11 dispatches at 64^3.
    */
-  const applyDisease = async (patch?: Partial<DiseaseState>): Promise<number> => {
+  const applyDisease = async (patch?: DiseasePatch): Promise<number> => {
     if (patch) {
       if (patch.globalAtrophyMm !== undefined) disease.globalAtrophyMm = patch.globalAtrophyMm;
       if (patch.mass) Object.assign(disease.mass, patch.mass);
@@ -696,7 +715,48 @@ export async function createBrainScene(
   // ASPECTS needs its own compute probe and readback, so it is built lazily:
   // most sessions never enable a stroke, and there is no reason to pay for a
   // pipeline and a storage buffer that will not be used.
+  // Region centroids, computed lazily from the CPU label copy and cached.
+  //
+  // One pass over 9 M voxels per structure, which is ~30 ms — fine on demand,
+  // wasteful for all 114 up front when a session touches at most a handful.
+  const centroidCache = new Map<number, [number, number, number] | null>();
+  const regionCentroid = (regionIndex: number): [number, number, number] | null => {
+    const hit = centroidCache.get(regionIndex);
+    if (hit !== undefined) return hit;
+
+    const gdim = field.manifest.grid.dim;
+    const ghalf = field.manifest.grid.halfExtentMm;
+    const labels = field.labelBytes;
+    let n = 0;
+    let sx = 0;
+    let sy = 0;
+    let sz = 0;
+    for (let iz = 0; iz < gdim; iz++) {
+      for (let iy = 0; iy < gdim; iy++) {
+        const row = gdim * (iy + gdim * iz);
+        for (let ix = 0; ix < gdim; ix++) {
+          if (labels[ix + row] !== regionIndex) continue;
+          n++;
+          sx += ix;
+          sy += iy;
+          sz += iz;
+        }
+      }
+    }
+    const toMm = (i: number) => ((i / n + 0.5) / gdim) * 2 * ghalf - ghalf;
+    const out: [number, number, number] | null =
+      n > 0 ? [toMm(sx), toMm(sy), toMm(sz)] : null;
+    centroidCache.set(regionIndex, out);
+    return out;
+  };
+
   let aspectsProbe: AspectsProbe | null = null;
+  let perfusionProbe: PerfusionProbe | null = null;
+  const measurePerfusion = async (): Promise<PerfusionResult | null> => {
+    if (!disease.stroke.enabled) return null;
+    perfusionProbe ??= new PerfusionProbe(engine, () => scene.render(), field, operators);
+    return perfusionProbe.measure();
+  };
   // Both probes are built on first use: their storage buffers are tens of
   // megabytes and most sessions never touch either.
   let exportProbeScene: ExportProbe | null = null;
@@ -947,8 +1007,10 @@ export async function createBrainScene(
     showVessels,
     measureSelection,
     captureBaseline,
+    regionCentroid,
     measureScales,
     measureAspects,
+    measurePerfusion,
     exportNifti,
     setScenario,
     setTime,

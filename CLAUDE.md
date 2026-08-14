@@ -866,6 +866,137 @@ Conspicuity averages a whole hemisphere, and the infarct is only a fraction of
 it, so the absolute ratios are small. **The ordering and the sign changes are
 the claim**, not the magnitudes.
 
+## Perfusion maps and the mismatch
+
+```js
+__corticum.setModality('mismatch')   // also 'rcbf', 'tmax'
+await __corticum.measurePerfusion()  // core / mismatch volumes, DEFUSE-3
+```
+
+A stroke tool that renders the lesion but not its VOLUMES stops one step short
+of the decision: DEFUSE-3 and DAWN select on core size and mismatch ratio, not
+on appearance. Core, hypoperfused volume, mismatch and eligibility appear live
+in the Stroke section beside ASPECTS.
+
+**Colour convention is deliberately the clinical one**, unlike the qEEG overlay
+where a perceptually-uniform ramp was the right call. A perfusion map is read by
+pattern-recognition against thousands of prior scans, and RAPID's magenta core
+on a green penumbra is what a stroke clinician recognises instantly. This is the
+one place where matching an existing convention beats good colourmap practice.
+
+### Phase 9 perfusion gate
+
+```
+await window.__corticum.verifyPerfusion()
+```
+
+| Gate | Result |
+|---|---|
+| core grows with time | PASS — 233 → 288 mL at 2 h → 24 h |
+| mismatch collapses | PASS — 51 → 1 mL |
+| collaterals preserve mismatch (at 6 h) | PASS — core 306 → 28 mL, mismatch 3 → 157 mL |
+| core is a subset of hypoperfusion | PASS by construction |
+
+The collateral result is the clinical picture in two numbers: at the *same* 6
+hours, poor collaterals leave a 306 mL core with 3 mL worth saving, while good
+collaterals leave 28 mL of core and 157 mL of target. Fast progressor versus
+slow progressor.
+
+### Two mistakes worth keeping
+
+**1. I re-derived a quantity the model already computed, and the two disagreed.**
+The first probe defined core as rCBF < 30% of the raw deficit field. But the
+operator encodes progression by LOWERING THE CORE THRESHOLD as hours pass, not
+by deepening the deficit — so the deficit field is time-independent and the
+probe reported byte-identical volumes at 2 h and 24 h while the renderer was
+plainly drawing a growing infarct. Core now comes from the model's own core
+channel at the same 0.5 threshold ASPECTS uses, so the two readouts cannot
+disagree about what is infarcted.
+
+**2. Filtering a smoothstep is not the smoothstep of the filtering.** `core` is
+a smoothstep OF `deficit`, so near the boundary trilinear interpolation lets the
+sharp channel cross 0.5 where the smooth one has not crossed 0.35 — measured, up
+to **24 mL of core outside the hypoperfused volume**, and a mismatch ratio of
+**0.89**, which is impossible since core is a subset by definition. Hypoperfusion
+is now the union with core, which is also the clinically correct statement:
+infarcted tissue is hypoperfused. A diagnostic bin asserts the containment.
+
+### Uncalibrated in one direction worth naming
+
+The core growth rate is **faster than the late-window trials imply**. By 24 h
+this model has consumed the penumbra even at collateral grade 3, whereas DAWN
+and DEFUSE-3 exist precisely because some patients still have mismatch at 6-24 h.
+The ordering is right; the clock is not calibrated. That is why the collateral
+gate compares at a fixed 6 h rather than at 24 h — at 24 h there is nothing left
+to distinguish, so a gate there would be testing nothing.
+
+## Haemorrhagic stroke
+
+The other half of "stroke", and the half a non-contrast CT exists to rule out:
+~15% of strokes are bleeds, and thrombolysing one is catastrophic.
+
+**It reuses the mass operator rather than adding a new one.** Geometrically a
+haematoma and a tumour are the same thing — a space-occupying lesion that
+displaces tissue — so `MassLesionState.kind` switches the *tissue*, not the
+geometry. What differs is how it looks per modality and how fast it evolves:
+`hoursSinceIctus` drives both. Haematoma expansion is modelled as a saturating
++33% volume over ~6 h (in radius, the cube root of that).
+
+### Blood signal dates the bleed
+
+This is the most-taught signal evolution in neuroradiology and it is genuinely
+counter-intuitive — blood is obvious on CT immediately and fades over weeks,
+while on T1 it starts unremarkable and only brightens after days.
+
+Measured contrast (affected hemisphere / healthy, on a slice through the clot):
+
+| | CT | T1 | T2 |
+|---|---|---|---|
+| 30 min | **1.042** | 0.980 | **1.057** |
+| 5 days | 1.050 | **1.030** | **0.953** |
+| 2 weeks | 1.004 | 1.030 | 1.020 |
+| *non-blood control* | *1.002* | *0.990* | *1.026* |
+
+The T2 row is the textbook sequence in three numbers: bright while oxy-Hb is
+liquid, profoundly **dark** as deoxy- and intracellular met-Hb appear, bright
+again in the chronic phase.
+
+### Phase 10 haemorrhage gate
+
+```
+await window.__corticum.verifyHaemorrhage()
+```
+
+| Gate | Result |
+|---|---|
+| hyperdense on CT within minutes | PASS — 1.042 vs 1.002 control |
+| T1 lags behind CT | PASS — 0.980 → 1.030 by day 5 |
+| CT fades | PASS — 1.042 → 1.004 |
+| mass effect scales with size | PASS — 0.35 → 6.26 mm shift |
+
+**The control is what makes the CT gate mean anything.** A whole-hemisphere mean
+dilutes a 17 mL bleed into ~600 mL of brain, so the absolute ratio is small no
+matter how bright the clot is — an absolute threshold would be measuring the
+dilution, not the contrast. Scoring against an *identical non-blood mass* (same
+size, same displacement, `kind: 'tumour'`) isolates the tissue property, which
+is the thing under test. My first version used a fixed >1.05 and failed at
+1.042; lowering it would have been moving the goalpost, adding the control was
+the actual fix.
+
+**And the gate was looking in the wrong place first.** It sampled an axial slice
+at Y = 6 mm while the bleed sits at Y = 34 with a 16 mm radius — the plane never
+touched the lesion, and every modality came back a flat 0.99. That reads as "the
+blood signal does nothing" rather than "the probe missed". The slice offset now
+comes from the lesion centre.
+
+### Known gaps
+
+Blood signal is a hand-tuned schedule of the textbook oxy-/deoxy-/met-Hb/
+hemosiderin sequence, **not relaxometry**. The haematoma is a sphere, not the
+irregular clot a real bleed forms. Expansion is applied to every bleed, whereas
+only about a third of real haematomas expand. **No intraventricular extension
+and no ICH score** — both would be worth adding.
+
 ## Clinical rating scales
 
 Teaching tools show pictures; clinicians write scores. Nothing bridged the two,
@@ -1172,6 +1303,66 @@ diverges. Two things make it work:
 
 Fisheye and slice view are mutually exclusive and the panel enforces it: one is
 an orthographic cross-section, the other a >180° projection.
+
+## Loading your own subject (in progress)
+
+**The bundled subject stays the default and loading is additive.** The app must
+render on arrival with no file supplied — a portfolio link that opens to an
+empty "choose a file" state is a broken link. Nothing in `src/ingest/` runs
+unless someone explicitly opens a file.
+
+Scope is a **FreeSurfer-processed subject**: an `aparc+aseg` as `.nii`/`.nii.gz`.
+Raw unprocessed MRI is out — corticum renders a distance field plus a 114-region
+parcellation, and everything downstream (region naming, ASPECTS, territories,
+Braak staging, volumetry) depends on that parcellation. Producing one means
+brain extraction and segmentation, which is FreeSurfer/FastSurfer's job.
+
+| Module | Does |
+|---|---|
+| `ingest/nifti.ts` | NIfTI-1/2 reader — either endianness, 8 datatypes, gzip, sform affine |
+| `ingest/buildSubject.ts` | resample to the 208³ grid, dense label remap, exact EDT, i8 encode |
+
+### Verified against the Python pipeline
+
+The browser builder is checked against the SHIPPED payload, which
+`build_fields.py` produced offline — two independent implementations, same
+subject:
+
+| | Result |
+|---|---|
+| NIfTI header vs nibabel | affine, dims, dtype and 114 labels all exact |
+| label agreement | **1.0000** over 9 M voxels |
+| inside-mask Dice | **1.0000** |
+| mean distance error | **0.004 mm** (quantisation only) |
+| build time | ~4.8 s for 256³ → 208³ |
+
+Getting there took two fixes, both of which produced plausible-looking output:
+
+1. **`sdfBytes` holds RAW SIGNED int8, not texture-ready bytes.** The loader
+   applies the `+128` offset-binary conversion when it builds the r8unorm
+   upload. Emitting pre-offset bytes rendered correctly on screen while
+   inverting the field for every CPU consumer — which is how the vascular tree
+   finds the cortex. Symptom: inside-mask Dice **0.018** with a perfectly
+   plausible inside-voxel count, i.e. the two masks were near-complements.
+2. **The grid is `(i - dim/2) * voxel`, not `(i + 0.5)/dim * extent`.**
+   `build_fields.py` does not resample — it CROPS a 208³ block out of the
+   conformed 256³ volume, so its texel *i* sits at integer world offset
+   `i - dim/2`. Sampling at half-voxel centres put the whole grid 0.5 mm off:
+   label agreement 96.3% and 0.74 mm mean error, both small enough to read as
+   rounding rather than a systematic shift. Dice went 0.934 → **1.0000**.
+
+Reusing the bundled `regions.json` as the canonical fsLabel → dense-index map is
+what lets territories, ASPECTS, Braak weights and everything else keyed on
+`fsLabel` work on an ingested subject with no changes at all.
+
+**Exact EDT, not GPU jump-flooding.** Felzenszwalb-Huttenlocher is O(n) per axis
+and exact; JFA is approximate and can be a voxel out near thin structures, which
+is not acceptable for the field the whole project rests on. 4.8 s once at load
+is the right trade.
+
+### Still to do
+
+The file-open UI and subject swap (`#35`), and EDF loading (`#36`).
 
 ## Subjects
 

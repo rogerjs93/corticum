@@ -181,6 +181,7 @@ export async function createOperators(
   velParams.addUniform('cfg', 4);
   velParams.addUniform('massCentre', 4);
   velParams.addUniform('massShape', 4);
+  velParams.addUniform('massClot', 4);
 
   const velPass = new ComputeShader(
     'opVelocity',
@@ -202,6 +203,7 @@ export async function createOperators(
   offParams.addUniform('cfg', 4);
   offParams.addUniform('massCentre', 4);
   offParams.addUniform('massShape', 4);
+  offParams.addUniform('massClot', 4);
   offParams.addUniform('ms', 4);
   offParams.addUniform('vent', 4);
   offParams.addUniform('atrophyLut', 4, 64);
@@ -405,8 +407,38 @@ export async function createOperators(
       const m = state.mass;
       const enabled = m.enabled ? 1 : 0;
 
+      // HAEMATOMA EXPANSION. Roughly a third of intracerebral haemorrhages grow
+      // in the first hours, and early growth is the strongest modifiable
+      // predictor of a bad outcome — it is why the "spot sign" and rapid blood
+      // pressure control matter. Modelled as a saturating rise to +33% volume
+      // over ~6 hours, which in RADIUS is the cube root of that.
+      //
+      // A tumour ignores this entirely: its timescale is the scenario's months.
+      const expansionVol =
+        m.kind === 'haemorrhage'
+          ? 1 + 0.33 * Math.min(Math.max(m.hoursSinceIctus, 0) / 6, 1)
+          : 1;
+      const effectiveRadius = m.radiusMm * Math.cbrt(expansionVol);
+
+      // Clot shape. Irregularity and region confinement are APPEARANCE and
+      // space-claiming only — the velocity field keeps the analytic sphere,
+      // because its divergence-free form and bounded Lipschitz constant are
+      // what guarantee the deformation is a diffeomorphism. Perturbing that
+      // would trade an invertibility proof for a prettier margin.
+      const clot: [number, number, number, number] = [
+        m.kind === 'haemorrhage' ? m.irregularity : 0,
+        m.kind === 'haemorrhage' ? m.targetRegion : -1,
+        m.kind === 'haemorrhage' ? m.density : 1,
+        0,
+      ];
       velParams.updateFloat4('cfg', dim, half, 0, 0);
-      velParams.updateFloat4('massCentre', m.centre[0], m.centre[1], m.centre[2], m.radiusMm);
+      velParams.updateFloat4(
+        'massCentre',
+        m.centre[0],
+        m.centre[1],
+        m.centre[2],
+        effectiveRadius
+      );
       velParams.updateFloat4(
         'massShape',
         m.edemaExtentMm,
@@ -414,6 +446,7 @@ export async function createOperators(
         m.necrosis,
         enabled
       );
+      velParams.updateFloat4('massClot', clot[0], clot[1], clot[2], clot[3]);
       velParams.update();
       await velPass.dispatchWhenReady(g, g, g);
 
@@ -456,7 +489,13 @@ export async function createOperators(
       }
 
       offParams.updateFloat4('cfg', dim, half, state.globalAtrophyMm, field.manifest.grid.dim);
-      offParams.updateFloat4('massCentre', m.centre[0], m.centre[1], m.centre[2], m.radiusMm);
+      offParams.updateFloat4(
+        'massCentre',
+        m.centre[0],
+        m.centre[1],
+        m.centre[2],
+        effectiveRadius
+      );
       offParams.updateFloat4(
         'massShape',
         m.edemaExtentMm,
@@ -464,6 +503,10 @@ export async function createOperators(
         m.necrosis,
         enabled
       );
+      // The OFFSET pass is where the lesion membership is actually computed, so
+      // omitting this left density at 0 and the clot rendered as nothing at all
+      // — while the velocity pass, which does not use it, kept working.
+      offParams.updateFloat4('massClot', clot[0], clot[1], clot[2], clot[3]);
       offParams.updateFloat4(
         'ms',
         state.ms.enabled ? 1 : 0,

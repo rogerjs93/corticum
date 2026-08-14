@@ -120,7 +120,58 @@ function int8ToUnorm(src: Uint8Array): Uint8Array {
   return out;
 }
 
-export async function loadField(scene: Scene, subject: string, dim: number): Promise<LoadedField> {
+/**
+ * Replace the anatomy of an already-loaded field in place.
+ *
+ * The textures keep their identity, so every material, compute pass and bind
+ * group that already references them stays valid — swapping subjects by
+ * rebuilding the scene would mean re-creating a dozen pipelines and losing the
+ * camera. Only the CONTENTS change, which is safe precisely because an ingested
+ * subject is built on the same 208^3 grid as the bundled one.
+ *
+ * The ventricle field is deliberately NOT replaced: it is a separate 128^3
+ * distance field that the ingest path does not yet produce, so the ventricular
+ * mesh continues to show the previous subject's. The caller is expected to hide
+ * it rather than display anatomy from two different brains at once.
+ */
+export function replaceFieldAnatomy(
+  field: LoadedField,
+  sdfBytes: Uint8Array,
+  labelBytes: Uint8Array
+): void {
+  const n = field.manifest.grid.dim;
+  if (sdfBytes.length !== n * n * n || labelBytes.length !== n * n * n) {
+    throw new Error(
+      `ingested volume is ${Math.cbrt(sdfBytes.length) | 0}^3 but the field is ${n}^3`
+    );
+  }
+  field.sdf.update(int8ToUnorm(sdfBytes));
+  field.labels.update(labelBytes);
+  field.sdfBytes.set(sdfBytes);
+  field.labelBytes.set(labelBytes);
+}
+
+/**
+ * Anatomy supplied by the user instead of fetched.
+ *
+ * The manifest, region table and ventricle field still come from the bundled
+ * subject: an ingested `aparc+aseg` provides the parenchyma and the labels, and
+ * everything else (grid geometry, region names, the ventricular distance field)
+ * is either identical by construction or not yet derivable in-browser. Stated
+ * here rather than discovered later.
+ */
+export interface FieldOverride {
+  sdfBytes: Uint8Array;
+  labelBytes: Uint8Array;
+  label: string;
+}
+
+export async function loadField(
+  scene: Scene,
+  subject: string,
+  dim: number,
+  override?: FieldOverride
+): Promise<LoadedField> {
   const t0 = performance.now();
   const base = `${subject}-${dim}`;
 
@@ -148,8 +199,13 @@ export async function loadField(scene: Scene, subject: string, dim: number): Pro
     throw new Error(`labels size ${labelRaw.length} != ${n}^3 (${expected})`);
   }
 
+  // A user-supplied subject replaces the anatomy but reuses everything else,
+  // so it flows through the identical upload path rather than a parallel one.
+  const sdfSrc = override ? override.sdfBytes : sdfRaw;
+  const labelSrc = override ? override.labelBytes : labelRaw;
+
   const sdf = new RawTexture3D(
-    int8ToUnorm(sdfRaw),
+    int8ToUnorm(sdfSrc),
     n,
     n,
     n,
@@ -167,7 +223,7 @@ export async function loadField(scene: Scene, subject: string, dim: number): Pro
   // Region indices must never be interpolated — halfway between region 3 and
   // region 7 is not region 5.
   const labels = new RawTexture3D(
-    labelRaw,
+    labelSrc,
     n,
     n,
     n,
@@ -205,8 +261,8 @@ export async function loadField(scene: Scene, subject: string, dim: number): Pro
     labels,
     ventricles,
     ventricleDim: vn,
-    sdfBytes: sdfRaw,
-    labelBytes: labelRaw,
+    sdfBytes: sdfSrc,
+    labelBytes: labelSrc,
     bytesTransferred: sdfRaw.length + labelRaw.length + ventRaw.length,
     ms: performance.now() - t0,
   };

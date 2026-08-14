@@ -174,7 +174,50 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   if (params.mass.shape.w > 0.5) {
     let centre = params.mass.centre.xyz;
     let radius = params.mass.centre.w;
-    lesion = massMembership(p, centre, radius);
+
+    // Region affinity: 1 inside the targeted structure, 0 outside. Sampled
+    // with the SAME label fetch the atrophy lookup already did, so targeting a
+    // structure costs no extra texture read.
+    //
+    // Nearest-value comparison, not interpolation — a region index is a class,
+    // and "halfway between putamen and thalamus" is not a structure. The
+    // softening that keeps the clot margin from looking cut out comes from the
+    // noise and the spill factor, not from blurring the label.
+    // Region affinity as a SOFT membership from eight taps, not a single
+    // lookup.
+    //
+    // The label texture is sampled with linear filtering, and a region index is
+    // a class — interpolating it produces values that belong to no structure
+    // (gotcha #18). A single `labIdx == target` test therefore only succeeds
+    // deep inside the structure, and for something as small as the putamen at
+    // the operator's 1.6 mm grid that interior is a handful of cells: the clot
+    // came out as a faint haze instead of a dense mass.
+    //
+    // Counting matches over a half-voxel neighbourhood recovers a graded 0..1
+    // membership that survives both the filtering and the resolution gap.
+    let targetIdx = params.mass.clot.y;
+    var affinity = 0.0;
+    var targeting = 0.0;
+    if (targetIdx >= 0.0) {
+      targeting = 1.0;
+      let step = 0.5 / params.cfg.w; // half a label voxel, in uv
+      var hits = 0.0;
+      for (var k = 0; k < 2; k = k + 1) {
+        for (var j = 0; j < 2; j = j + 1) {
+          for (var i = 0; i < 2; i = i + 1) {
+            let o = vec3<f32>(f32(i) - 0.5, f32(j) - 0.5, f32(k) - 0.5) * 2.0 * step;
+            let v = u32(round(
+              textureSampleLevel(labTex, labSampler, uvw + o, 0.0).r * 255.0
+            ));
+            hits = hits + select(0.0, 1.0, abs(f32(v) - targetIdx) < 0.5);
+          }
+        }
+      }
+      affinity = hits / 8.0;
+    }
+    lesion = clotMembership(
+      p, centre, radius, params.mass.clot.x, targeting, affinity
+    ) * params.mass.clot.z;
     // The lesion occupies space: a negative offset dilates the field into the
     // surrounding parenchyma.
     offset = offset - lesion * radius * params.mass.shape.z;

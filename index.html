@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>corticum — Phase 0 spike</title>
+    <title>corticum — real-time parametric brain</title>
     <script>
       // rAF race shim. In a hidden/headless document rAF never fires, which
       // silently stalls any code that waits on a frame. Anything that must be
@@ -95,15 +95,46 @@
         backdrop-filter: blur(6px);
       }
       .cx-sec {
-        margin-bottom: 22px;
+        margin-bottom: 8px;
+        border: 1px solid #1e2630;
+        border-radius: 5px;
+        background: rgba(20, 26, 34, 0.45);
       }
       .cx-h {
-        margin: 0 0 10px;
+        margin: 0;
+        padding: 9px 10px;
         font-size: 11px;
         font-weight: 600;
         letter-spacing: 0.09em;
         text-transform: uppercase;
         color: #8fa0b4;
+        cursor: pointer;
+        list-style: none;
+        user-select: none;
+      }
+      /* Chevron that rotates when the section opens. */
+      .cx-h::-webkit-details-marker {
+        display: none;
+      }
+      .cx-h::before {
+        content: '▸';
+        display: inline-block;
+        width: 12px;
+        color: #5c6875;
+        transition: transform 0.12s;
+      }
+      .cx-sec[open] > .cx-h::before {
+        transform: rotate(90deg);
+      }
+      .cx-sec[open] > .cx-h {
+        color: #b8c6d6;
+        border-bottom: 1px solid #1e2630;
+      }
+      .cx-h:hover {
+        background: rgba(35, 45, 58, 0.5);
+      }
+      .cx-secbody {
+        padding: 10px 10px 4px;
       }
       .cx-select {
         width: 100%;
@@ -239,6 +270,9 @@
       }
       .cx-scale .cx-label {
         min-width: 52px;
+      }
+      .cx-ok {
+        color: #6ee7a8;
       }
       .cx-loss {
         color: #e3b341;

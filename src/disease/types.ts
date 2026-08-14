@@ -18,6 +18,42 @@ export interface MassLesionState {
   edemaStrength: number;
   /** Fraction of the radius the lesion claims as its own volume. */
   necrosis: number;
+  /**
+   * What the lesion is MADE of.
+   *
+   * Geometrically a haematoma and a tumour are the same operator — a
+   * space-occupying mass that displaces tissue — so they share the velocity and
+   * offset fields rather than duplicating them. What differs is the tissue
+   * type, and therefore how the lesion looks on each modality and how fast it
+   * evolves. A tumour grows over months; a haematoma is hyperdense on CT within
+   * minutes, expands over hours, and changes MRI signal over weeks as
+   * haemoglobin degrades.
+   */
+  kind: 'tumour' | 'haemorrhage';
+  /**
+   * How lobulated the clot margin is. 0 is a perfect sphere, which is what a
+   * haematoma never is — an irregular margin is itself a radiological sign,
+   * predicting expansion.
+   */
+  irregularity: number;
+  /**
+   * Dense region index to confine the bleed to, or -1 for a free-floating
+   * mass. A putaminal bleed should look like a putamen, not like a ball that
+   * happens to be centred on one.
+   */
+  targetRegion: number;
+  /**
+   * Clot density 0..1. Drives how hyperdense it reads and how completely it
+   * claims the space it occupies — a loose, partly-liquid collection is both
+   * less bright and less space-occupying than an organised clot.
+   */
+  density: number;
+  /**
+   * Hours since ictus, for a haemorrhage. Drives haematoma expansion and the
+   * blood-degradation signal; ignored when `kind` is 'tumour', which uses the
+   * scenario timeline in months instead.
+   */
+  hoursSinceIctus: number;
 }
 
 export interface NeurodegenerationState {
@@ -78,6 +114,24 @@ export interface DiseaseState {
   stroke: StrokeState;
 }
 
+/**
+ * A partial update to the disease state.
+ *
+ * `Partial<DiseaseState>` is not enough: it makes the top-level keys optional
+ * but still demands a COMPLETE nested state, so every scenario literal had to
+ * be rewritten each time a field was added to MassLesionState — which happened
+ * twice and broke the build both times. `applyDisease` merges with
+ * Object.assign, so partial nested states were always correct at runtime; only
+ * the type was lying.
+ */
+export type DiseasePatch = {
+  globalAtrophyMm?: number;
+  mass?: Partial<MassLesionState>;
+  neuro?: Partial<NeurodegenerationState>;
+  ms?: Partial<DemyelinationState>;
+  stroke?: Partial<StrokeState>;
+};
+
 export function defaultDiseaseState(): DiseaseState {
   return {
     globalAtrophyMm: 0,
@@ -90,6 +144,11 @@ export function defaultDiseaseState(): DiseaseState {
       edemaExtentMm: 22,
       edemaStrength: 1,
       necrosis: 0.55,
+      kind: 'tumour',
+      hoursSinceIctus: 6,
+      irregularity: 0,
+      targetRegion: -1,
+      density: 1,
     },
     neuro: {
       braakStage: 0,

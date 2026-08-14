@@ -1,4 +1,4 @@
-import type { DiseaseState, Evidence } from './types';
+import type { DiseasePatch, Evidence } from './types';
 
 /**
  * Disease progression over time.
@@ -25,7 +25,7 @@ export interface Scenario {
   citation?: string;
   /** What the viewer should be looking for as time advances. */
   narrative: (t: number) => string;
-  at(t: number): Partial<DiseaseState>;
+  at(t: number): DiseasePatch;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -212,6 +212,8 @@ const mass: Scenario = {
         edemaExtentMm: 8 + 22 * f,
         edemaStrength: clamp(0.4 + f, 0, 1.2),
         necrosis: clamp(0.25 + 0.45 * f, 0, 0.8),
+        kind: 'tumour',
+        hoursSinceIctus: 0,
       },
     };
   },
@@ -275,19 +277,81 @@ const stroke: Scenario = {
         edemaExtentMm: 26,
         edemaStrength: 1.1 * swell,
         necrosis: 0.12,
+        // Cytotoxic swelling, not blood.
+        kind: 'tumour',
+        hoursSinceIctus: 0,
       },
     };
   },
 };
 
-export const SCENARIOS: Scenario[] = [alzheimers, ftd, parkinsons, ms, mass, stroke];
+/**
+ * Intracerebral haemorrhage.
+ *
+ * The other half of "stroke", and the half a CT exists to rule out: about 15%
+ * of strokes are bleeds, and giving thrombolysis to one is catastrophic. Which
+ * is why the timeline here starts at minutes — the diagnosis is made in the
+ * first scan, not over days.
+ *
+ * Volume is the dominant predictor of outcome and the reason haematoma
+ * EXPANSION matters: a third of these grow in the first hours, and that growth
+ * is the main thing acute treatment tries to prevent.
+ */
+const ich: Scenario = {
+  id: 'ich',
+  name: 'Intracerebral haemorrhage',
+  unit: 'hours',
+  tMax: 336, // two weeks, enough to watch the CT signal fade
+  playRate: 24,
+  evidence: 'plausible-approximation',
+  citation:
+    'Volume/expansion framing after Broderick et al. 1993 and the ' +
+    'INTERACT/ATACH blood-pressure trials; signal evolution is textbook.',
+  narrative(t) {
+    if (t < 1) return 'hyperacute: hyperdense on CT within minutes — this is the finding that excludes thrombolysis';
+    if (t < 6) return 'haematoma expansion; volume is the dominant predictor of outcome';
+    if (t < 24) return 'expansion plateaus; mass effect and midline shift develop';
+    if (t < 72) return 'perihaematomal oedema; still bright on CT, now DARK on T2';
+    if (t < 168) return 'subacute: bright on T1 as methaemoglobin forms, while CT fades';
+    return 'chronic: CT isodense, a hemosiderin rim that will persist for life';
+  },
+  at(t) {
+    const h = clamp(t, 0, this.tMax);
+    // A deep ganglionic bleed — the commonest hypertensive site, and the one
+    // whose mass effect on the internal capsule causes the dense hemiplegia.
+    return {
+      mass: {
+        enabled: h > 0.01,
+        centre: [30, 34, 6],
+        radiusMm: 16,
+        // Perihaematomal oedema builds over days rather than being present at
+        // once, which is why the lesion keeps growing after the bleeding stops.
+        edemaExtentMm: 6 + 16 * clamp(h / 96, 0, 1),
+        edemaStrength: 0.9 * clamp(h / 72, 0, 1),
+        necrosis: 0.85,
+        kind: 'haemorrhage',
+        hoursSinceIctus: h,
+        // Lobulated from the start; an irregular margin is itself a sign.
+        irregularity: 0.55,
+        // Left putamen — the classic hypertensive site. Confining the clot to
+        // it is what makes the bleed look like a putaminal haemorrhage rather
+        // than a ball centred near one.
+        targetRegion: -1,
+        // Fresh clot is dense; it liquefies over the following fortnight.
+        density: 1 - 0.35 * clamp((h - 168) / 336, 0, 1),
+      },
+    };
+  },
+};
+
+export const SCENARIOS: Scenario[] = [alzheimers, ftd, parkinsons, ms, mass, stroke, ich];
 
 export function scenarioById(id: string): Scenario | undefined {
   return SCENARIOS.find((s) => s.id === id);
 }
 
 /** Everything a scenario does not set must be reset, or states leak between runs. */
-export function baselineForScenario(): Partial<DiseaseState> {
+export function baselineForScenario(): DiseasePatch {
   return {
     globalAtrophyMm: 0,
     neuro: {
@@ -305,6 +369,8 @@ export function baselineForScenario(): Partial<DiseaseState> {
       edemaExtentMm: 22,
       edemaStrength: 1,
       necrosis: 0.55,
+      kind: 'tumour',
+      hoursSinceIctus: 0,
     },
     stroke: {
       enabled: false,

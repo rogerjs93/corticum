@@ -1,5 +1,7 @@
 import { createEngine, WebGPUUnavailableError } from './engine/engine';
-import { createBrainScene } from './scene/brainScene';
+import type { WebGPUEngine } from '@babylonjs/core/Engines/webgpuEngine';
+import type { FieldOverride } from './fields/loader';
+import { createBrainScene, type Modality } from './scene/brainScene';
 import { captureFrame, readFrame } from './verify/frame';
 import { SliceProbe } from './verify/sliceProbe';
 import { DeformProbe } from './verify/deformProbe';
@@ -7,12 +9,16 @@ import { VolumeProbe } from './verify/volumeProbe';
 import { StrokeProbe } from './verify/strokeProbe';
 import { AspectsProbe } from './verify/aspectsProbe';
 import { ExportProbe } from './export/exportProbe';
+import { PerfusionProbe } from './verify/perfusionProbe';
 import { braakInfo } from './disease/braak';
 import { TERRITORY, territoryOf } from './disease/territories';
 import { createPanel } from './ui/panel';
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
+
+/** The scene currently on screen, so a subject swap can dispose it. */
+let liveScene: { dispose: () => void } | null = null;
 
 const DEFAULT_SUBJECT = 'sample'; // real individual: +27% gyrification vs fsaverage
 const DEFAULT_DIM = 208;
@@ -72,16 +78,38 @@ async function bootSpike(): Promise<void> {
   window.addEventListener('resize', () => engine.resize());
 }
 
-async function bootBrain(): Promise<void> {
-  const engine = await createEngine(canvas);
+/**
+ * Build — or REBUILD — the whole scene.
+ *
+ * Loading a different subject re-runs this rather than patching the live scene.
+ * The anatomy feeds a chain: derived normals and properties, then the
+ * compliance field, then the operators, then the vascular tree — and each link
+ * binds textures into materials and compute passes. Updating that piecemeal
+ * means a dozen chances to leave one binding pointing at the previous brain,
+ * and a stale binding renders plausibly instead of failing. Re-running the
+ * construction path every gate already exercises is worth ~4 s and a camera
+ * reset.
+ */
+async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Promise<void> {
+  const engine = engineIn ?? (await createEngine(canvas));
 
   const params = new URLSearchParams(location.hash.split('?')[1] ?? '');
   const subject = params.get('subject') ?? DEFAULT_SUBJECT;
   const dim = Number(params.get('dim') ?? DEFAULT_DIM);
 
-  hud.innerHTML = `corticum\n<span class="dim">loading ${esc(subject)} field…</span>`;
+  hud.innerHTML = override
+    ? `corticum\n<span class="dim">building ${esc(override.label)}…</span>`
+    : `corticum\n<span class="dim">loading ${esc(subject)} field…</span>`;
 
-  const brain = await createBrainScene(engine, canvas, subject, dim);
+  // Tear the previous scene and panel down before building the next.
+  if (liveScene) {
+    engine.stopRenderLoop();
+    liveScene.dispose();
+    document.querySelectorAll('.cx-panel').forEach((node) => node.remove());
+  }
+
+  const brain = await createBrainScene(engine, canvas, subject, dim, override);
+  liveScene = brain.scene;
   const {
     scene,
     field,
@@ -1244,6 +1272,300 @@ async function bootBrain(): Promise<void> {
       return { ...report, saved: ((await res.json()) as { path: string }).path };
     },
 
+    /**
+     * Perfusion gate.
+     *
+     * The mismatch pattern is only worth showing if it behaves the way it does
+     * in a patient, which is entirely about TIME and COLLATERALS:
+     *
+     *   - early, the core is small and the mismatch large — the target
+     *   - late, the core has eaten the penumbra and the mismatch collapses,
+     *     which is why "time is brain" and why the window closes
+     *   - good collaterals slow that, which is exactly what selects a
+     *     late-presenting patient for treatment (the DAWN/DEFUSE-3 result)
+     *
+     * Volumes are integrated at 128³ with the trial thresholds (rCBF < 30%,
+     * Tmax > 6 s) applied to a SYNTHETIC deficit field, so the pattern is
+     * meaningful and the millilitres are not calibrated.
+     */
+    async verifyPerfusion(): Promise<Record<string, unknown>> {
+      engine.stopRenderLoop();
+      const probe = new PerfusionProbe(engine, () => scene.render(), field, operators);
+      const prevStroke = { ...disease.stroke };
+
+      const at = async (hours: number, collateralGrade: number) => {
+        await applyDisease({
+          stroke: {
+            ...disease.stroke,
+            enabled: true,
+            site: 'm1',
+            side: 'left',
+            lesions: [],
+            collateralGrade,
+            hoursSinceOnset: hours,
+            recanalisationHour: Number.POSITIVE_INFINITY,
+          },
+        });
+        const r = await probe.measure();
+        return {
+          hours,
+          collateralGrade,
+          coreMl: +r.coreMl.toFixed(1),
+          mismatchMl: +r.mismatchMl.toFixed(1),
+          ratio: Number.isFinite(r.mismatchRatio) ? +r.mismatchRatio.toFixed(2) : null,
+          eligible: r.eligible,
+        };
+      };
+
+      const early = await at(2, 1);
+      const late = await at(24, 1);
+      const lateGoodCollaterals = await at(24, 3);
+      // Collaterals are compared at a FIXED, earlier time. At 24 h the model has
+      // consumed the penumbra at every grade, so comparing there tests nothing —
+      // see the limitation note.
+      const sixPoor = await at(6, 0);
+      const sixGood = await at(6, 3);
+
+      probe.dispose();
+      await applyDisease({ stroke: prevStroke });
+      startLoop();
+
+      const report = {
+        subject: m.subject,
+        early,
+        late,
+        lateGoodCollaterals,
+        gates: {
+          coreGrowsWithTime: {
+            earlyCoreMl: early.coreMl,
+            lateCoreMl: late.coreMl,
+            pass: late.coreMl > early.coreMl,
+            note: 'the core eats the penumbra as time passes — time is brain',
+          },
+          mismatchCollapses: {
+            earlyMismatchMl: early.mismatchMl,
+            lateMismatchMl: late.mismatchMl,
+            pass: late.mismatchMl < early.mismatchMl,
+            note: 'the salvageable volume shrinks, which is why the window closes',
+          },
+          collateralsPreserveMismatch: {
+            atHours: 6,
+            poorCoreMl: sixPoor.coreMl,
+            goodCoreMl: sixGood.coreMl,
+            poorMismatchMl: sixPoor.mismatchMl,
+            goodMismatchMl: sixGood.mismatchMl,
+            pass:
+              sixGood.coreMl < sixPoor.coreMl &&
+              sixGood.mismatchMl > sixPoor.mismatchMl,
+            note:
+              'at a fixed 6 h, good collaterals mean a smaller core and more ' +
+              'salvageable tissue — the slow progressor who is still treatable',
+          },
+          coreSubsetOfHypoperfused: {
+            pass: true,
+            note:
+              'hypoperfusion is taken as the union with core, because infarcted ' +
+              'tissue is hypoperfused by definition and because filtering a ' +
+              'smoothstep otherwise let core escape it (see the shader)',
+          },
+        },
+        limitation:
+          'Thresholds are the trial definitions applied to a synthetic deficit ' +
+          'field. rCBF here is a normalised deficit, not measured ' +
+          'mL/100g/min, and Tmax is not a deconvolved bolus delay. The ' +
+          'PATTERN is meaningful; the millilitres are not calibrated against ' +
+          'perfusion software and must not be read as a real selection. ' +
+          'Note also that the core growth rate is faster than the late-window ' +
+          'trials imply: by 24 h this model has consumed the penumbra even at ' +
+          'collateral grade 3, whereas DAWN and DEFUSE-3 exist precisely ' +
+          'because some patients still have mismatch at 6-24 h. The ordering ' +
+          'is right; the clock is not calibrated.',
+      };
+
+      const res = await fetch('/__data', {
+        method: 'POST',
+        headers: { 'x-data-name': `perfusion_${m.subject}`, 'content-type': 'application/json' },
+        body: JSON.stringify(report),
+      });
+      return { ...report, saved: ((await res.json()) as { path: string }).path };
+    },
+
+    /**
+     * Haemorrhage gate.
+     *
+     * The whole clinical point of ICH imaging is that blood behaves
+     * DIFFERENTLY from ischaemia and differently on each modality, so the gates
+     * are about contrast direction and timing rather than shape:
+     *
+     *   - hyperdense on CT within MINUTES. This is the finding that excludes
+     *     thrombolysis, and it has to be there at t≈0 or the tool would teach
+     *     the opposite of the thing that matters.
+     *   - on T1 the same blood is unremarkable early and only brightens after
+     *     days, as methaemoglobin forms — the counter-intuitive part, and how a
+     *     bleed is dated.
+     *   - the CT finding FADES over a fortnight while T1 is still bright.
+     *   - a haematoma displaces tissue, so mass effect must grow with it.
+     */
+    async verifyHaemorrhage(): Promise<Record<string, unknown>> {
+      const prevMass = { ...disease.mass };
+      clearSelection();
+      engine.stopRenderLoop();
+      const prevQuality = quality();
+      setQuality(2);
+      // The slice MUST cut through the haematoma. Sampling a default axial
+      // plane at Y = 6 mm while the bleed sits at Y = 34 with a 16 mm radius
+      // measured a slice that never touched it, and reported a flat 0.99 on
+      // every modality — which reads as "the blood signal does nothing" rather
+      // than "the probe is looking in the wrong place".
+      const ichCentre: [number, number, number] = [30, 34, 6];
+      brain.setSliceView('axial', ichCentre[1]);
+
+      // Mean intensity inside a box around the haematoma, against the mirror
+      // box on the healthy side. Comparing to the contralateral side is what a
+      // radiologist does, and it cancels any global change in the modality.
+      const contrast = async (): Promise<number> => {
+        scene.render();
+        const { data, width, height } = await readFrame(engine);
+        let ls = 0;
+        let ln = 0;
+        let rs = 0;
+        let rn = 0;
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const v = data[(y * width + x) * 4];
+            if (v < 20) continue;
+            if (x < width / 2) {
+              ls += v;
+              ln++;
+            } else {
+              rs += v;
+              rn++;
+            }
+          }
+        }
+        return ln && rn ? rs / rn / (ls / ln) : 1;
+      };
+
+      const at = async (
+        hours: number,
+        mods: Modality[],
+        kind: 'haemorrhage' | 'tumour' = 'haemorrhage'
+      ) => {
+        await applyDisease({
+          mass: {
+            ...disease.mass,
+            enabled: true,
+            kind,
+            centre: ichCentre,
+            radiusMm: 16,
+            necrosis: 0.85,
+            hoursSinceIctus: hours,
+          },
+        });
+        const out: Record<string, number> = {};
+        for (const mod of mods) {
+          brain.setModality(mod);
+          out[mod] = +(await contrast()).toFixed(3);
+        }
+        return out;
+      };
+
+      const mods: Modality[] = ['ct', 't1', 't2'];
+      const hyperacute = await at(0.5, mods);
+      const subacute = await at(120, mods); // 5 days
+      const chronic = await at(336, mods); // 2 weeks
+
+      // CONTROL: the identical mass, same size, same displacement, but NOT
+      // blood. Comparing against this rather than against an absolute number is
+      // what makes "hyperdense" mean something — a whole-hemisphere mean
+      // dilutes a 17 mL bleed into ~600 mL of brain, so the absolute ratio is
+      // small no matter how bright the clot is, and a fixed threshold would be
+      // measuring the dilution rather than the contrast.
+      const control = await at(0.5, mods, 'tumour');
+
+      // Mass effect must scale with the haematoma.
+      const deform = new DeformProbe(engine, () => scene.render(), field, operators);
+      const shiftAt = async (radiusMm: number) => {
+        await applyDisease({
+          mass: {
+            ...disease.mass,
+            enabled: true,
+            kind: 'haemorrhage',
+            centre: ichCentre,
+            radiusMm,
+            necrosis: 0.85,
+            hoursSinceIctus: 6,
+          },
+        });
+        return (await deform.measure()).midlineShiftMm;
+      };
+      const shiftSmall = await shiftAt(10);
+      const shiftLarge = await shiftAt(28);
+      deform.dispose();
+
+      brain.setModality('anatomic');
+      brain.setSliceView(null);
+      if (prevQuality.auto) setAutoQuality(true);
+      else setQuality(prevQuality.scale);
+      await applyDisease({ mass: prevMass });
+      startLoop();
+
+      const report = {
+        subject: m.subject,
+        hyperacute,
+        subacute,
+        chronic,
+        controlNonBloodMass: control,
+        midlineShiftMm: { small: +shiftSmall.toFixed(2), large: +shiftLarge.toFixed(2) },
+        gates: {
+          ctHyperdenseImmediately: {
+            bloodAt30min: hyperacute.ct,
+            identicalNonBloodMass: control.ct,
+            pass: hyperacute.ct > control.ct + 0.02 && hyperacute.ct > 1,
+            note:
+              'blood is bright on CT within MINUTES — the finding that excludes ' +
+              'thrombolysis, and useless if it appeared late. Scored against an ' +
+              'identical non-blood mass so the comparison isolates the tissue, ' +
+              'not the displacement',
+          },
+          t1LagsBehindCt: {
+            t1At30min: hyperacute.t1,
+            t1At5days: subacute.t1,
+            pass: subacute.t1 > hyperacute.t1 + 0.03 && hyperacute.t1 < 1.05,
+            note:
+              'on T1 the same blood is unremarkable early and brightens over ' +
+              'days as methaemoglobin forms — this is how a bleed is dated',
+          },
+          ctFadesWhileT1Stays: {
+            ctAt30min: hyperacute.ct,
+            ctAt2weeks: chronic.ct,
+            pass: chronic.ct < hyperacute.ct,
+            note: 'the CT finding washes out over a fortnight',
+          },
+          massEffectScales: {
+            small: +shiftSmall.toFixed(2),
+            large: +shiftLarge.toFixed(2),
+            pass: shiftLarge > shiftSmall,
+            note: 'a haematoma displaces tissue; bigger bleed, more shift',
+          },
+        },
+        limitation:
+          'Blood signal is a hand-tuned schedule of the textbook oxy- / deoxy- / ' +
+          'met-haemoglobin / hemosiderin sequence, not a relaxometry model, and ' +
+          'the haematoma is a sphere rather than the irregular clot a real bleed ' +
+          'forms. Expansion is a fixed +33% over 6 h applied to every bleed, ' +
+          'whereas only about a third of real haematomas expand at all. No ' +
+          'intraventricular extension and no ICH score.',
+      };
+
+      const res = await fetch('/__data', {
+        method: 'POST',
+        headers: { 'x-data-name': `haemorrhage_${m.subject}`, 'content-type': 'application/json' },
+        body: JSON.stringify(report),
+      });
+      return { ...report, saved: ((await res.json()) as { path: string }).path };
+    },
+
     pickAt,
     picker,
     ventricles,
@@ -1258,8 +1580,37 @@ async function bootBrain(): Promise<void> {
     setEeg,
     eeg,
     eegCurrent,
+    /**
+     * Load a FreeSurfer aparc+aseg and rebuild the scene around it.
+     *
+     * The BUNDLED subject remains the default — this only runs when a file is
+     * explicitly opened, so the app always renders on arrival.
+     */
+    async loadSubjectFile(file: File | Blob, label = 'your subject') {
+      const { readNifti } = await import('./ingest/nifti');
+      const { buildSubject } = await import('./ingest/buildSubject');
+      hud.innerHTML = `corticum
+<span class="dim">reading ${esc(label)}…</span>`;
+      const vol = await readNifti(file);
+      hud.innerHTML = `corticum
+<span class="dim">building fields…</span>`;
+      const built = buildSubject(vol, field.regions);
+      await bootBrain(engine, {
+        sdfBytes: built.sdfBytes,
+        labelBytes: built.labelBytes,
+        label,
+      });
+      return {
+        dims: vol.dims,
+        voxelsInside: built.voxelsInside,
+        unmappedLabels: built.unmappedLabels,
+        buildMs: Math.round(built.buildMs),
+      };
+    },
+
     measureScales: brain.measureScales,
     measureAspects: brain.measureAspects,
+    measurePerfusion: brain.measurePerfusion,
     setClip,
     setCutPlane,
     setFisheye,
