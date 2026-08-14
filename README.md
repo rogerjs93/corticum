@@ -116,6 +116,31 @@ probe sits behind it and is fully occluded — `fragDepth` compositing, measured
 in pixels rather than eyeballed. The teal ring's vertices were generated on the
 GPU and never touched the CPU.*
 
+## What it is not yet
+
+The gates above test internal consistency and agreement with the source
+segmentation. They are not evidence that simulated disease resembles real
+disease, and four limitations bound what this release may be used for:
+
+- **The synthetic image is a tissue-class mapping** — no noise, no bias field, no
+  partial-volume model, no skull. Suitable for scoring a method against a *known
+  deformation*, not for judging how it behaves on clinical images.
+- **No standard space and no connectivity layer.** Exports are in subject/world
+  coordinates; normative connectomes and published atlases live in MNI152.
+- **Never externally validated.** No standard neuroimaging pipeline has been run
+  on its output.
+- **Uncalibrated rates.** The sequence of events follows the literature; the
+  timings do not. The stroke core-growth clock is faster than DEFUSE-3 and DAWN
+  imply.
+
+So: ready for teaching and for exploring parametric pathology; **not** yet ready
+to benchmark a method, supply a cohort, or support a claim that simulated disease
+matches real disease.
+
+[**ROADMAP.md**](ROADMAP.md) gives the full assessment — strengths and
+limitations in detail — and the planned work to close the gap, including external
+validation against the ENIGMA structural protocol.
+
 ### Which brain?
 
 `sample` (a real individual) is the default rather than the `fsaverage`
