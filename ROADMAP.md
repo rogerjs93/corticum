@@ -5,7 +5,7 @@ it does not do, and the planned work that follows from that. Written to be read
 by someone deciding whether this tool is useful to them, so the limitations are
 stated as plainly as the strengths.
 
-corticum today is a strong teaching tool and a provisional research one. The gap
+corticum today is a teaching tool and a provisional research one. The gap
 is not rendering quality or physics; it is **citability, interoperability, scale
 and external validation**. A supervisor cannot cite a browser tab, a normative
 connectome cannot read world-space coordinates, a benchmark of one brain is a
