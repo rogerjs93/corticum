@@ -1,6 +1,12 @@
 import { defineConfig, type Plugin } from 'vite';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+
+// Read the version from package.json rather than duplicating it, so the
+// published version and the one stamped into exports cannot drift apart.
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
+  version: string;
+};
 
 /**
  * Dev-only screenshot sink.
@@ -70,6 +76,10 @@ export default defineConfig({
     // Build stamp: lets us spot a stale cached bundle instantly when debugging
     // a GPU issue that "should already be fixed".
     __BUILD__: JSON.stringify(new Date().toISOString()),
+    // Semantic version, read from package.json so the two cannot drift. Stamped
+    // into every export's provenance sidecar — a result produced by this tool
+    // has to name the version that produced it or it cannot be cited.
+    __VERSION__: JSON.stringify(pkg.version),
   },
   server: {
     // Exposed on the LAN so the page can be opened in a real browser on the

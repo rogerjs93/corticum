@@ -13,7 +13,7 @@ Full plan (phases, architecture, verification): `C:\Users\roger\.claude\plans\i-
 |---|---|
 | **Vite `^6.4.3`** | Node here is **v20.15.1**; Vite 7 needs ≥20.19. Same trap as arlabeler. Do not `npm create vite` onto latest. |
 | **`@babylonjs/core` 8.56.2** (exact) | Essentially the whole corpus of WebGPU-compute forum answers and playgrounds targets 7.x/8.x. 9.19.0 exists — re-run the Phase 0 spike against it before moving. |
-| **`@oxlint/binding-win32-x64-msvc` as a direct devDependency** | oxlint ≥1.20 declares `engines.node ^20.19 \|\| >=22.12`, so npm **skips its native binding as an optional dep** on Node 20.15 and `npx oxlint` dies with "Cannot find native binding". The binary itself runs fine on 20.15 — the constraint is conservative. Declaring it directly forces the install. Makes linting win32-x64-only, which is acceptable here. |
+| **`@oxlint/binding-win32-x64-msvc` in `optionalDependencies`** | oxlint ≥1.20 declares `engines.node ^20.19 \|\| >=22.12`, so npm **skips its native binding** on Node 20.15 and `npx oxlint` dies with "Cannot find native binding". It was briefly a *direct* devDependency to force the install — which broke CI: the package declares `os: win32`, so `npm ci` died with `EBADPLATFORM` on the ubuntu runner before lint or build could run. Optional is the correct home: CI's `node-version: '20'` resolves above 20.19 so oxlint's own linux binding installs there. **Cost: a clean `npm ci` on local Node 20.15 skips it and `npm run lint` fails. Bump local Node to ≥20.19 to fix — which also unpins Vite.** |
 | **`webgpu` (Dawn node bindings) `^0.4.0`** | Real Tint validation headlessly. Binds the **actual D3D12 adapter** on this machine, not SwiftShader. |
 
 GPU target: **GTX 1050 Ti, 4 GB** (Pascal). VRAM is not the constraint (~374 MB
@@ -1209,6 +1209,37 @@ there is no sentinel that distinguishes "never written" from "genuinely empty"
 while the very next run reported 14%. `ExportProbe` now dispatches once and
 discards it whenever it allocates, which is far cheaper than doubling a 100 MB
 readback to compare.
+
+### Provenance sidecar
+
+Every export also writes `<prefix>_provenance.json`: tool version, build stamp,
+subject, grid and space, **the full disease state and region modifiers that
+produced it**, a SHA-256 per emitted volume, and the limitation text below.
+
+A result nobody can regenerate is a result nobody can cite, and the parameters
+are the only thing distinguishing one export from another. The hashes are what
+make the sidecar falsifiable rather than merely a claim — gate:
+
+| Property | Result |
+|---|---|
+| same spec twice ⇒ identical digests | PASS |
+| one changed parameter ⇒ different digests | PASS |
+| restoring the parameter ⇒ original digests return | PASS |
+
+That third row is the strong one: it shows the digest tracks *state* rather than
+time or GPU nondeterminism.
+
+Worth knowing when reading a diff of digests: adding **atrophy** changes the T1
+and SDF hashes but leaves the displacement hash untouched, because atrophy is an
+SDF erosion and not a warp. A displacement hash that moved under pure atrophy
+would mean the offset operator had started deforming, which it must not.
+
+**Cross-GPU bit-identity is not claimed** and is almost certainly unattainable
+(driver-dependent floating point). The digests are for reproducing a run on one
+machine, not for comparing across machines.
+
+`crypto.subtle` needs a secure context: localhost and https qualify, `file://`
+does not, and there the hash is recorded as `null` rather than failing the export.
 
 ### What this is not
 

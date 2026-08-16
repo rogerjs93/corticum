@@ -159,6 +159,12 @@ Switch with `#/?subject=fsaverage`.
 
 Requires Node 20.15+ and a WebGPU-capable browser (Chrome/Edge 113+).
 
+**Linting needs Node 20.19+.** `oxlint`'s native binding declares
+`engines: ^20.19.0 || >=22.12.0`, and it is an optional dependency so that
+`npm ci` succeeds on non-win32 CI runners. On Node 20.15 a clean install skips
+it and `npm run lint` fails with "Cannot find native binding" — `npm run build`
+and the dev server are unaffected.
+
 ```bash
 npm install
 ```

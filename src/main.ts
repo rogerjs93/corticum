@@ -1182,7 +1182,20 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
      */
     async exportNifti(gridDim = 128, download = true): Promise<Record<string, unknown>> {
       exportProbe ??= new ExportProbe(engine, () => scene.render(), field, operators, derived);
-      const r = await exportProbe.run(gridDim, { download });
+      const r = await exportProbe.run(gridDim, {
+        download,
+        // The live state is here, not in the probe, so provenance has to be
+        // handed down. Recording an empty parameter set would be worse than
+        // recording none: it would look like a healthy baseline.
+        provenance: {
+          state: structuredClone(disease),
+          regions: modifiers.modified().map((mod) => ({
+            name: mod.region.name,
+            vulnerability: mod.vulnerability,
+            overrideMm: mod.overrideMm,
+          })),
+        },
+      });
       return { ...r, megabytes: +(r.bytes / 1e6).toFixed(1) };
     },
 

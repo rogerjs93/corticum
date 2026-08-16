@@ -21,6 +21,22 @@ export interface ExportResult {
   bytes: number;
   /** Present when `keep` is set: the emitted file bytes, for verification. */
   buffers?: Array<{ name: string; data: ArrayBuffer }>;
+  /** The sidecar contents, so a caller can assert on them without re-reading the file. */
+  provenance: Record<string, unknown>;
+}
+
+/**
+ * SHA-256 of a buffer, as lowercase hex.
+ *
+ * `crypto.subtle` needs a secure context. localhost and https both qualify, so
+ * this works in dev and on Pages — but a `file://` spot-check does not, and a
+ * missing hash must not take the whole export down with it. Returns null there
+ * instead, which the sidecar records honestly.
+ */
+async function sha256Hex(data: ArrayBuffer): Promise<string | null> {
+  if (!globalThis.crypto?.subtle) return null;
+  const d = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**
@@ -99,7 +115,21 @@ export class ExportProbe {
    */
   async run(
     dim = 128,
-    opts: { download?: boolean; prefix?: string; keep?: boolean } = {}
+    opts: {
+      download?: boolean;
+      prefix?: string;
+      keep?: boolean;
+      /**
+       * The disease state and per-region modifiers that produced this export.
+       * Recorded verbatim in the provenance sidecar: a result nobody can
+       * regenerate is a result nobody can cite, and the parameters are the
+       * only thing that distinguishes one export from another.
+       */
+      provenance?: {
+        state?: unknown;
+        regions?: Array<{ name: string; vulnerability: number; overrideMm: number }>;
+      };
+    } = {}
   ): Promise<ExportResult> {
     const m = this.field.manifest;
     const half = m.grid.halfExtentMm;
@@ -191,18 +221,48 @@ export class ExportProbe {
       },
     ];
 
+    // Content hashes make the sidecar falsifiable: two runs of one spec must
+    // produce identical digests, and a changed parameter must change them.
+    // Without this the sidecar is only a claim about what was exported.
+    const digests = await Promise.all(files.map((f) => sha256Hex(f.data)));
+    const provenance = {
+      tool: 'corticum',
+      version: __VERSION__,
+      build: __BUILD__,
+      exportedAt: new Date().toISOString(),
+      subject: m.subject,
+      grid: { dim, voxelMm, halfExtentMm: half, originMm: origin, space: 'RAS' },
+      // Explicitly NOT MNI152 — every consumer needs to know which space this
+      // is before it can do anything with the coordinates.
+      parameters: opts.provenance?.state ?? null,
+      regionModifiers: opts.provenance?.regions ?? [],
+      files: files.map((f, i) => ({ name: f.name, bytes: f.data.byteLength, sha256: digests[i] })),
+      measurements: { insideFraction: inside / n, maxDisplacementMm: maxDisp },
+      limitations:
+        'Synthetic T1 is a tissue-class mapping, not a pulse-sequence simulation: ' +
+        'no noise, no bias field, no partial-volume model, no skull or scalp. ' +
+        'Suitable for scoring a method against a known deformation, not for judging ' +
+        'behaviour on real clinical images.',
+    };
+    const sidecar = {
+      name: `${prefix}_provenance.json`,
+      data: new TextEncoder().encode(JSON.stringify(provenance, null, 2)).buffer as ArrayBuffer,
+    };
+
     if (opts.download !== false) {
       for (const f of files) downloadBlob(f.data, f.name);
+      downloadBlob(sidecar.data, sidecar.name);
     }
 
     return {
       dim,
       voxelMm,
-      files: files.map((f) => f.name),
+      files: [...files.map((f) => f.name), sidecar.name],
       insideFraction: inside / n,
       maxDisplacementMm: maxDisp,
       bytes: files.reduce((a, f) => a + f.data.byteLength, 0),
-      buffers: opts.keep ? files : undefined,
+      buffers: opts.keep ? [...files, sidecar] : undefined,
+      provenance,
     };
   }
 
