@@ -307,6 +307,20 @@ keep them in step.
     ±104 mm ⇒ ~57 mm steps, tens of kB gzipped) — only worth adding if the
     march, rather than the shading, is ever shown to be the bottleneck.
 
+44. **A node rebuilt every frame can never be clicked.** The HUD wrote its
+    whole `innerHTML` in the render loop, so the element under `mousedown` was
+    destroyed before `mouseup` — and a `click` only fires when both land on the
+    SAME element. The overlay's collapse toggle silently did nothing. Note that
+    `element.click()` does **not** reproduce this (it dispatches directly and
+    skips hit-testing), so a programmatic test passes while every real click
+    fails. Fix: a stable header node, with only the body rewritten per frame.
+    Anything interactive must outlive a frame.
+
+45. **`pointer-events: none` on a parent still lets a child take events back.**
+    `#hud` stays click-through so dragging to orbit works across it; only
+    `.hud-head` sets `pointer-events: auto`. The click still bubbles to `#hud`.
+    This is correct and intended, not a workaround.
+
 ### Confirmed-good (no workaround needed)
 
 - `RawTexture3D(..., Constants.TEXTURE_CREATIONFLAG_STORAGE)` really does

@@ -283,6 +283,26 @@
       #hud {
         max-width: 34ch;
       }
+
+      /* The HUD container stays click-through so dragging to orbit works over
+         it. Only the header takes pointer events back; the click still bubbles
+         to #hud, where one delegated listener handles it. */
+      .hud-head {
+        pointer-events: auto;
+        cursor: pointer;
+        display: inline-flex;
+        gap: 8px;
+        align-items: baseline;
+        user-select: none;
+      }
+      .hud-head:hover .hud-chevron {
+        color: #b8c6d6;
+      }
+      .hud-chevron {
+        color: #5c6875;
+        font-size: 11px;
+        transition: transform 0.12s;
+      }
     </style>
   </head>
   <body>

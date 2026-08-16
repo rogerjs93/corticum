@@ -1770,18 +1770,58 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
       `</span>${moved}`;
   });
 
+  // Collapsed by default. The build and perf figures are developer diagnostics:
+  // useful while working, noise for anyone looking at a brain. What a viewer
+  // actually wants from the overlay is the identity line and whatever they just
+  // clicked on, so that is all the collapsed state shows.
+  const HUD_KEY = 'corticum.hudExpanded';
+  let hudExpanded = localStorage.getItem(HUD_KEY) === '1';
+
+  // The header must be a STABLE node. A `click` only fires when mousedown and
+  // mouseup land on the same element, and the body below is rewritten every
+  // frame — so a header rebuilt at 60 fps is destroyed between the two and can
+  // never be clicked. Programmatic .click() does not reproduce this, which is
+  // exactly why it has to be tested with a real one.
+  hud.innerHTML = '';
+  const hudHead = document.createElement('span');
+  hudHead.className = 'hud-head';
+  const hudBody = document.createElement('span');
+  hud.append(hudHead, hudBody);
+
+  const drawHead = () => {
+    hudHead.innerHTML =
+      `<span>corticum <span class="dim">· ${esc(m.subject)}</span></span>` +
+      `<span class="hud-chevron">${hudExpanded ? '▴' : '▾'}</span>`;
+  };
+  drawHead();
+
+  hudHead.onclick = () => {
+    hudExpanded = !hudExpanded;
+    localStorage.setItem(HUD_KEY, hudExpanded ? '1' : '0');
+    drawHead();
+  };
+
   const startLoop = () => engine.runRenderLoop(() => {
     scene.render();
     const ms = frameMs();
-    hud.innerHTML =
-      `corticum <span class="dim">· ${esc(m.subject)}</span>\n` +
-      `<span class="dim">${m.grid.dim}³ payload → ${derived.workDim}³ GPU field (tricubic)\n` +
+
+    if (!hudExpanded) {
+      // Keep the pick visible even when collapsed — it is the one line that
+      // responds to the viewer, so hiding it would make clicking the brain
+      // feel unresponsive.
+      hudBody.innerHTML = pickLine ? `\n${pickLine}` : '';
+      return;
+    }
+
+    hudBody.innerHTML =
+      `\n<span class="dim">${m.grid.dim}³ payload → ${derived.workDim}³ GPU field (tricubic)\n` +
       `${gz} MB gzipped → ${mb} MB in · built in ${derived.buildMs.toFixed(0)} ms\n` +
       `${ms.toFixed(1)} ms / ${ms > 0 ? (1000 / ms).toFixed(0) : '…'} fps · render 1/${quality().scale}×</span>\n\n` +
       `${pickLine}\n\n` +
       `<span class="dim">drag to orbit · scroll to zoom · X for x-ray · V for ventricles ` +
       `(${ventricles.triangleCount.toLocaleString()} tris)</span>`;
   });
+
   startLoop();
 
   window.addEventListener('resize', () => engine.resize());
