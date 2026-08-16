@@ -162,7 +162,7 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   // is already loaded and every feature works on it; this exists for someone
   // who has their own FreeSurfer output. A panel that opens demanding a file
   // would turn a working demo into a dead end.
-  const secSubject = makeSection('7 · Subject — load your own (optional)');
+  const secSubject = makeSection('1 · Subject');
   const subjectNote = el(
     'div',
     'cx-note',
@@ -215,7 +215,7 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   );
 
   // ---- scenario + timeline -------------------------------------------------
-  const secTime = makeSection('1 · Scenario & time', true);
+  const secTime = makeSection('2 · Scenario & time', true);
 
   const select = el('select', 'cx-select');
   select.append(new Option('— none (healthy) —', ''));
@@ -296,10 +296,10 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   // the sections that produced them, which meant the volume, the scales,
   // ASPECTS and the perfusion numbers — all answers to "how bad is it" — were
   // never visible together.
-  const secMeasure = makeSection('4 · Measurements', true);
+  const secMeasure = makeSection('5 · Measurements', true);
   const secExport = makeSection('9 · Export');
 
-  const secRegion = makeSection('3 · Regional control');
+  const secRegion = makeSection('4 · Regional control');
 
   const groupKind = el('select', 'cx-select cx-inline');
   for (const k of ['network', 'lobe', 'hemisphere']) {
@@ -462,7 +462,7 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   // side and collateral grade are the three things a stroke is actually
   // discussed in terms of, and the vascular tree exists so you can see which
   // branches a given site starves.
-  const secStroke = makeSection('2 · Lesion', true);
+  const secStroke = makeSection('3 · Lesion', true);
 
   const siteSel = el('select', 'cx-select');
   siteSel.append(new Option('— no occlusion —', ''));
@@ -776,8 +776,8 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   // Split in two: choosing HOW to image the field is a different job from
   // moving the camera through it, and bundling them put the modality selector
   // below three lens sliders.
-  const secView = makeSection('5 · Imaging', true);
-  const secNav = makeSection('6 · Navigation');
+  const secView = makeSection('6 · Imaging', true);
+  const secNav = makeSection('7 · Navigation');
 
   const modeRow = slider('x-ray', {
     min: 0,
@@ -1055,6 +1055,8 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   secExport.body.append(exportBtn, exportNote);
 
   root.append(
+    makeGroup('Subject'),
+    secSubject.root,
     makeGroup('Disease'),
     secTime.root,
     secStroke.root,
@@ -1065,7 +1067,6 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
     secView.root,
     secNav.root,
     makeGroup('Data'),
-    secSubject.root,
     secPatient.root,
     secExport.root
   );

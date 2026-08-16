@@ -54,18 +54,32 @@
         outline: none;
         touch-action: none;
       }
+      /* Collapsed: no chrome at all. A translucent rectangle floating over the
+         render reads as a debug overlay, and for two lines of text it is not
+         earning the border it costs. A shadow keeps it legible over cortex,
+         which is the only thing the box was really doing. */
       #hud {
         position: fixed;
         top: 12px;
         left: 12px;
         z-index: 10;
         padding: 10px 14px;
-        background: rgba(10, 13, 18, 0.82);
-        border: 1px solid #2a323d;
+        background: none;
+        border: 1px solid transparent;
         border-radius: 6px;
         white-space: pre;
         pointer-events: none;
         max-width: 46ch;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+        transition: background 0.12s, border-color 0.12s;
+      }
+      /* Expanded: adopt the control panel's treatment so the two overlays read
+         as one system rather than two different ideas about the same problem. */
+      #hud.hud-open {
+        background: rgba(10, 13, 18, 0.9);
+        border-color: #232b35;
+        backdrop-filter: blur(6px);
+        text-shadow: none;
       }
       .ok {
         color: #6ee7a8;

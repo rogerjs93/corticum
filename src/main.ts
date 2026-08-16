@@ -1789,6 +1789,7 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
   hud.append(hudHead, hudBody);
 
   const drawHead = () => {
+    hud.classList.toggle('hud-open', hudExpanded);
     hudHead.innerHTML =
       `<span>corticum <span class="dim">· ${esc(m.subject)}</span></span>` +
       `<span class="hud-chevron">${hudExpanded ? '▴' : '▾'}</span>`;
