@@ -165,6 +165,23 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
   // sessions never export.
   let exportProbe: ExportProbe | null = null;
 
+  /**
+   * The parameter record that goes into an export's provenance sidecar.
+   *
+   * Shared by `exportNifti` and `verifyExport` deliberately. The first version
+   * of the gate exported WITHOUT provenance, so it certified a code path users
+   * never take — and its own `parametersRecorded` check is what caught it. The
+   * gate must test what actually runs.
+   */
+  const liveProvenance = () => ({
+    state: structuredClone(disease),
+    regions: modifiers.modified().map((mod) => ({
+      name: mod.region.name,
+      vulnerability: mod.vulnerability,
+      overrideMm: mod.overrideMm,
+    })),
+  });
+
   document.body.append(createPanel(brain, field.regions));
 
   (window as unknown as Record<string, unknown>).__corticum = {
@@ -1182,20 +1199,7 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
      */
     async exportNifti(gridDim = 128, download = true): Promise<Record<string, unknown>> {
       exportProbe ??= new ExportProbe(engine, () => scene.render(), field, operators, derived);
-      const r = await exportProbe.run(gridDim, {
-        download,
-        // The live state is here, not in the probe, so provenance has to be
-        // handed down. Recording an empty parameter set would be worse than
-        // recording none: it would look like a healthy baseline.
-        provenance: {
-          state: structuredClone(disease),
-          regions: modifiers.modified().map((mod) => ({
-            name: mod.region.name,
-            vulnerability: mod.vulnerability,
-            overrideMm: mod.overrideMm,
-          })),
-        },
-      });
+      const r = await exportProbe.run(gridDim, { download, provenance: liveProvenance() });
       return { ...r, megabytes: +(r.bytes / 1e6).toFixed(1) };
     },
 
@@ -1222,21 +1226,36 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
       exportProbe ??= new ExportProbe(engine, () => scene.render(), field, operators, derived);
 
       await applyDisease({ mass: { ...disease.mass, enabled: false } });
-      const healthy = await exportProbe.run(64, { download: false });
+      const healthy = await exportProbe.run(64, { download: false, provenance: liveProvenance() });
 
       await applyDisease({
         mass: { ...disease.mass, enabled: true, radiusMm: 30, centre: [28, 30, 10] },
       });
-      const lesioned = await exportProbe.run(64, { download: false });
+      const lesioned = await exportProbe.run(64, { download: false, provenance: liveProvenance() });
 
       // Read the header back out of a real emitted file rather than trusting
       // the writer's own arithmetic.
+      // A FRESH probe, same state as `lesioned`. Repeating through the same
+      // probe instance would only prove the buffers were not clobbered; a new
+      // one proves the digest depends on the state rather than on probe
+      // history.
       const probe = new ExportProbe(engine, () => scene.render(), field, operators, derived);
-      const one = await probe.run(64, { download: false });
+      const one = await probe.run(64, { download: false, provenance: liveProvenance() });
       probe.dispose();
+
+      // Return to the healthy state and export a fourth time. This is the
+      // strong determinism check: a digest that leaves and comes back is
+      // tracking state, whereas two matching runs could be coincidence.
+      await applyDisease({ mass: { ...disease.mass, enabled: false } });
+      const healthyAgain = await exportProbe.run(64, { download: false, provenance: liveProvenance() });
 
       await applyDisease({ mass: prevMass });
       startLoop();
+
+      const digest = (r: { provenance: Record<string, unknown> }): string =>
+        ((r.provenance.files as Array<{ sha256: string | null }>) ?? [])
+          .map((f) => f.sha256 ?? 'NULL')
+          .join('|');
 
       const report = {
         subject: m.subject,
@@ -1268,6 +1287,32 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
               'brain occupies ~17% of the bounding cube; far outside that means ' +
               'a transposed or mis-scaled grid',
           },
+          // Provenance is only worth writing if it is falsifiable. These three
+          // are what make the sidecar a record rather than a claim.
+          digestIsReproducible: {
+            pass: digest(lesioned) === digest(one),
+            note:
+              'the same state exported twice, through a FRESH probe, must give ' +
+              'identical SHA-256 digests',
+          },
+          digestTracksState: {
+            pass: digest(healthy) !== digest(lesioned),
+            note: 'a changed parameter must change the digests, or they record nothing',
+          },
+          digestReturnsOnRestore: {
+            pass: digest(healthy) === digest(healthyAgain),
+            note:
+              'restoring the parameter must bring the ORIGINAL digests back — two ' +
+              'matching runs could be coincidence, a digest that leaves and returns ' +
+              'is tracking state rather than time or GPU nondeterminism',
+          },
+        },
+        provenance: {
+          version: one.provenance.version,
+          parametersRecorded: one.provenance.parameters !== null,
+          note:
+            'Digests are for reproducing a run on ONE machine. Cross-GPU ' +
+            'bit-identity is not claimed and is unlikely to hold.',
         },
         limitation:
           'The synthetic T1 is a tissue-class mapping, not a pulse-sequence ' +

@@ -1218,16 +1218,28 @@ produced it**, a SHA-256 per emitted volume, and the limitation text below.
 
 A result nobody can regenerate is a result nobody can cite, and the parameters
 are the only thing distinguishing one export from another. The hashes are what
-make the sidecar falsifiable rather than merely a claim — gate:
+make the sidecar falsifiable rather than merely a claim.
+
+The three properties are gated inside `verifyExport()`, not checked by hand:
 
 | Property | Result |
 |---|---|
-| same spec twice ⇒ identical digests | PASS |
+| same state, FRESH probe ⇒ identical digests | PASS |
 | one changed parameter ⇒ different digests | PASS |
 | restoring the parameter ⇒ original digests return | PASS |
 
-That third row is the strong one: it shows the digest tracks *state* rather than
-time or GPU nondeterminism.
+That third row is the strong one: two matching runs could be coincidence, but a
+digest that leaves and comes back is tracking *state* rather than time or GPU
+nondeterminism. The first uses a fresh `ExportProbe` on purpose — repeating
+through the same instance would only prove the buffers were not clobbered.
+
+**43. The gate exported through a different code path than the app did.**
+`verifyExport` called `run()` without `provenance`, so it certified an export
+that recorded no parameters while every real export recorded them. Its own
+`parametersRecorded` field is what caught it, and the fix was to share one
+`liveProvenance()` builder between the gate and `exportNifti`. Same lesson as
+#42 and #39 in a new place: **a gate that does not go through the shipping path
+is testing a program nobody runs.**
 
 Worth knowing when reading a diff of digests: adding **atrophy** changes the T1
 and SDF hashes but leaves the displacement hash untouched, because atrophy is an
