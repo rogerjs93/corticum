@@ -129,6 +129,17 @@ export class ExportProbe {
         state?: unknown;
         regions?: Array<{ name: string; vulnerability: number; overrideMm: number }>;
       };
+      /**
+       * Declare the export in MNI152 rather than subject space. Only the
+       * header changes: the samples stay on the subject's grid, so nothing is
+       * resampled and the ground-truth displacement stays exact. Downstream
+       * tools resample from the sform if they need an MNI voxel grid.
+       *
+       * Ignored with a warning when the payload carries no MNI block, because
+       * silently emitting subject coordinates labelled MNI152 is the worst
+       * possible failure here.
+       */
+      mni?: boolean;
     } = {}
   ): Promise<ExportResult> {
     const m = this.field.manifest;
@@ -192,12 +203,43 @@ export class ExportProbe {
     const origin: [number, number, number] = [o, o, o];
     const prefix = opts.prefix ?? `corticum_${m.subject}`;
 
+    // The native affine is diagonal: the data is already RAS and the grid is
+    // axis-aligned. MNI is that affine left-multiplied by the subject's
+    // tkrRAS->MNI152 matrix — one composition, no resampling.
+    const nativeAffine = [
+      [voxelMm, 0, 0, origin[0]],
+      [0, voxelMm, 0, origin[1]],
+      [0, 0, voxelMm, origin[2]],
+    ];
+    const toMni = m.mni?.tkrRasToMni152;
+    const wantMni = opts.mni === true;
+    if (wantMni && !toMni) {
+      console.warn(
+        `corticum: no MNI transform in the ${m.subject} payload — exporting in ` +
+          'subject space. Run tools/prep/mni_transform.py --write to add one.'
+      );
+    }
+    const useMni = wantMni && !!toMni;
+    // Compose only the three rows NIfTI stores; the fourth is [0,0,0,1] by
+    // construction for both matrices.
+    const affine = useMni
+      ? nativeAffine.map((_, r) =>
+          [0, 1, 2, 3].map((c) =>
+            [0, 1, 2].reduce((s, k) => s + toMni![r][k] * nativeAffine[k][c], toMni![r][3] * (c === 3 ? 1 : 0))
+          )
+        )
+      : nativeAffine;
+    const space = useMni ? 'MNI152' : 'RAS (subject tkrRAS)';
+    const sformCode = useMni ? 4 : 2;
+
     const files: { name: string; data: ArrayBuffer }[] = [
       {
         name: `${prefix}_t1.nii`,
         data: writeNifti(t1, dim, {
           voxelMm,
           originMm: origin,
+          affine,
+          sformCode,
           description: 'corticum synthetic T1 (not a pulse sequence)',
         }),
       },
@@ -206,6 +248,8 @@ export class ExportProbe {
         data: writeNifti(sdf, dim, {
           voxelMm,
           originMm: origin,
+          affine,
+          sformCode,
           description: 'corticum composed signed distance, mm',
         }),
       },
@@ -214,6 +258,8 @@ export class ExportProbe {
         data: writeNifti(worldVectorsToRas(disp), dim, {
           voxelMm,
           originMm: origin,
+          affine,
+          sformCode,
           description: 'corticum ground-truth displacement, mm (RAS)',
           intentCode: 1006, // NIFTI_INTENT_DISPVECT
           components: 3,
@@ -231,9 +277,12 @@ export class ExportProbe {
       build: __BUILD__,
       exportedAt: new Date().toISOString(),
       subject: m.subject,
-      grid: { dim, voxelMm, halfExtentMm: half, originMm: origin, space: 'RAS' },
-      // Explicitly NOT MNI152 — every consumer needs to know which space this
-      // is before it can do anything with the coordinates.
+      grid: { dim, voxelMm, halfExtentMm: half, originMm: origin, space },
+      // Which space this is decides whether the coordinates mean anything
+      // standard. Recorded from what was actually written, not from what
+      // was requested — an MNI export that silently fell back to subject
+      // space must not claim otherwise.
+      mni: useMni ? { affine, sform: sformCode, via: m.mni?.via, validation: m.mni?.validation } : null,
       parameters: opts.provenance?.state ?? null,
       regionModifiers: opts.provenance?.regions ?? [],
       files: files.map((f, i) => ({ name: f.name, bytes: f.data.byteLength, sha256: digests[i] })),

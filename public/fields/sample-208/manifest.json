@@ -54,5 +54,43 @@
   "rh.white": "582d1220ab57212390f345d44e1c2de925efb89cbb9624c118a1d5adc668b2ba",
   "rh.sulc": "115eede79f4a09b41cd6ffc3072863e18d07c4ba454b622606733d3e46a64a8d"
  },
- "license": "FreeSurfer \u2014 see LICENSES/FreeSurfer.md. Derived/modified data."
+ "license": "FreeSurfer \u2014 see LICENSES/FreeSurfer.md. Derived/modified data.",
+ "mni": {
+  "space": "MNI152",
+  "kind": "affine",
+  "via": "talairach.xfm (subject->MNI305) composed with FreeSurfer's MNI305->MNI152",
+  "tkrRasToMni152": [
+   [
+    1.01956396,
+    -0.02273971,
+    -0.02099619,
+    0.64855489
+   ],
+   [
+    0.08604214,
+    0.91660672,
+    0.40346715,
+    -21.37615552
+   ],
+   [
+    -0.00522263,
+    -0.4408406,
+    1.02183139,
+    -32.08857822
+   ],
+   [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  ],
+  "validation": {
+   "structures": 8,
+   "meanErrorMm": 2.72,
+   "worstErrorMm": 5.13,
+   "lateralityFlips": []
+  },
+  "note": "Affine only, and the voxel grid stays the subject's \u2014 an export carries this as its sform so downstream tools can resample. It is not a nonlinear warp."
+ }
 }

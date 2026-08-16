@@ -34,6 +34,20 @@ export interface NiftiOptions {
   intentCode?: number;
   /** Trailing vector components per voxel (3 for a displacement field). */
   components?: number;
+  /**
+   * Full 4x4 voxel->world affine, overriding the diagonal one built from
+   * `voxelMm` / `originMm`. Used to declare an export in MNI152 without
+   * resampling: the samples stay on the subject's grid and only the mapping
+   * to world coordinates changes, so nothing is interpolated and the ground
+   * truth stays exact.
+   */
+  affine?: number[][];
+  /**
+   * NIfTI sform code. 2 = aligned to anatomical truth (the default, and what a
+   * subject-space export is), 4 = MNI152. Getting this right matters: a tool
+   * reading code 2 will not assume the coordinates mean anything standard.
+   */
+  sformCode?: number;
 }
 
 /**
@@ -98,7 +112,7 @@ export function writeNifti(
   // the two disagreeing is a classic source of silent misregistration, so it is
   // deliberately left at 0 (unknown) rather than filled in approximately.
   view.setInt16(252, 0, LE); // qform_code = unknown
-  view.setInt16(254, 2, LE); // sform_code = aligned to anatomical truth
+  view.setInt16(254, opts.sformCode ?? 2, LE); // 2 = aligned, 4 = MNI152
 
   const [ox, oy, oz] = opts.originMm;
   const v = opts.voxelMm;
@@ -109,13 +123,25 @@ export function writeNifti(
   const SROW_X = 280;
   const SROW_Y = 296;
   const SROW_Z = 312;
-  // Diagonal and positive, because the data is already RAS.
-  view.setFloat32(SROW_X, v, LE);
-  view.setFloat32(SROW_X + 12, ox, LE);
-  view.setFloat32(SROW_Y + 4, v, LE);
-  view.setFloat32(SROW_Y + 12, oy, LE);
-  view.setFloat32(SROW_Z + 8, v, LE);
-  view.setFloat32(SROW_Z + 12, oz, LE);
+  if (opts.affine) {
+    // A general affine has off-diagonal terms, so every one of the twelve
+    // entries has to be written. Writing only the diagonal would silently
+    // drop the rotation and leave a plausible-looking, wrong header.
+    const rows = [SROW_X, SROW_Y, SROW_Z];
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 4; c++) {
+        view.setFloat32(rows[r] + c * 4, opts.affine[r][c], LE);
+      }
+    }
+  } else {
+    // Diagonal and positive, because the data is already RAS.
+    view.setFloat32(SROW_X, v, LE);
+    view.setFloat32(SROW_X + 12, ox, LE);
+    view.setFloat32(SROW_Y + 4, v, LE);
+    view.setFloat32(SROW_Y + 12, oy, LE);
+    view.setFloat32(SROW_Z + 8, v, LE);
+    view.setFloat32(SROW_Z + 12, oz, LE);
+  }
 
   view.setUint8(344, 0x6e); // 'n'
   view.setUint8(345, 0x2b); // '+'

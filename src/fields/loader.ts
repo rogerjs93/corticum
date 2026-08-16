@@ -31,6 +31,25 @@ export interface FieldManifest {
   tissueClasses: Record<string, number>;
   bytes: Record<string, number>;
   sources: Record<string, string>;
+  /**
+   * Subject tkrRAS -> MNI152, composed offline by `tools/prep/mni_transform.py`
+   * from FreeSurfer's own `talairach.xfm`. Optional: payloads built before that
+   * script existed have no MNI block, and an export simply stays in subject
+   * space rather than silently claiming a standard one.
+   */
+  mni?: {
+    space: string;
+    kind: string;
+    via: string;
+    tkrRasToMni152: number[][];
+    validation: {
+      structures: number;
+      meanErrorMm: number;
+      worstErrorMm: number;
+      lateralityFlips: string[];
+    };
+    note: string;
+  };
 }
 
 export interface RegionMeta {

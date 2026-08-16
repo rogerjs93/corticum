@@ -1253,6 +1253,53 @@ machine, not for comparing across machines.
 `crypto.subtle` needs a secure context: localhost and https qualify, `file://`
 does not, and there the hash is recorded as `null` rather than failing the export.
 
+### MNI152 export
+
+```js
+await __corticum.exportNifti(128, true, { mni: true })
+```
+
+Every normative connectome and published atlas lives in MNI152, so a
+subject-space export cannot feed them. **Nothing is registered here** — FreeSurfer
+already solved it when the subject was reconstructed, and re-deriving it would be
+inventing an answer that is already on disk:
+
+    tkrRAS --Norig @ inv(Torig)--> scanner RAS --talairach.xfm--> MNI305
+           --FreeSurfer constant--> MNI152
+
+`tools/prep/mni_transform.py --subject sample --write` composes it and records
+the 4x4 in the field manifest. The export then left-multiplies its own diagonal
+affine by that matrix and writes the result as the sform with **code 4 (MNI152)**
+instead of 2 (aligned).
+
+**Only the header changes.** The samples stay on the subject's grid, so nothing
+is resampled, no interpolation happens, and the ground-truth displacement stays
+exact. A tool needing an MNI voxel grid resamples from the sform itself.
+
+| Gate | Result |
+|---|---|
+| deep structures vs PUBLISHED MNI centroids (sample) | mean 2.72 mm, worst 5.13 mm |
+| same, fsaverage | mean 2.48 mm, worst 4.30 mm |
+| left/right sign of x per structure | 0 flips |
+| browser composition vs numpy | max abs diff 1.4e-14 |
+
+Three things about those gates:
+
+1. **The reference is published coordinates, not corticum's parcellation.**
+   Scoring against the same table the transform was built from would only prove
+   self-consistency (#39 again).
+2. **Laterality is checked by the SIGN of x, separately from distance.** A
+   left/right flip leaves every structure the same distance from the midline, so
+   a mean-error gate cannot see it — and this project has already shipped one
+   flip that scored Dice 0.948.
+3. `~2.7 mm` **is what a 12-dof affine gives.** It is not a nonlinear warp;
+   `talairach.m3z` exists if that is ever wanted.
+
+**A missing transform never silently degrades.** If the payload has no `mni`
+block the export warns, stays in subject space, and the sidecar reports the space
+that was actually written — because subject coordinates labelled MNI152 is the
+worst failure available here.
+
 ### What this is not
 
 The synthetic T1 is a tissue-class mapping: **no noise, no bias field, no

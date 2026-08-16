@@ -1197,9 +1197,17 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
      *
      * `__corticum.exportNifti(128)` after setting up any disease state.
      */
-    async exportNifti(gridDim = 128, download = true): Promise<Record<string, unknown>> {
+    async exportNifti(
+      gridDim = 128,
+      download = true,
+      opts: { mni?: boolean } = {}
+    ): Promise<Record<string, unknown>> {
       exportProbe ??= new ExportProbe(engine, () => scene.render(), field, operators, derived);
-      const r = await exportProbe.run(gridDim, { download, provenance: liveProvenance() });
+      const r = await exportProbe.run(gridDim, {
+        download,
+        provenance: liveProvenance(),
+        mni: opts.mni,
+      });
       return { ...r, megabytes: +(r.bytes / 1e6).toFixed(1) };
     },
 
@@ -1307,6 +1315,45 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
               'is tracking state rather than time or GPU nondeterminism',
           },
         },
+        mniGates: await (async () => {
+          const native = await exportProbe!.run(64, {
+            download: false,
+            provenance: liveProvenance(),
+          });
+          const mni = await exportProbe!.run(64, {
+            download: false,
+            provenance: liveProvenance(),
+            mni: true,
+          });
+          const has = !!field.manifest.mni;
+          const mp = mni.provenance as Record<string, unknown>;
+          const np = native.provenance as Record<string, unknown>;
+          const grid = (p: Record<string, unknown>) => p.grid as { space: string };
+          return {
+            payloadHasTransform: {
+              pass: has,
+              note: 'run tools/prep/mni_transform.py --write if this fails',
+            },
+            spaceIsDeclared: {
+              native: grid(np).space,
+              mni: grid(mp).space,
+              pass: grid(np).space !== grid(mp).space && grid(mp).space === 'MNI152',
+              note:
+                'the sidecar must report the space that was WRITTEN, so a ' +
+                'fallback to subject space can never be read as MNI',
+            },
+            atlasValidation: {
+              ...(field.manifest.mni?.validation ?? {}),
+              pass:
+                !!field.manifest.mni &&
+                field.manifest.mni.validation.lateralityFlips.length === 0 &&
+                field.manifest.mni.validation.worstErrorMm < 20,
+              note:
+                'scored offline against PUBLISHED MNI centroids, not against ' +
+                "corticum's own parcellation — see tools/prep/mni_transform.py",
+            },
+          };
+        })(),
         provenance: {
           version: one.provenance.version,
           parametersRecorded: one.provenance.parameters !== null,

@@ -73,10 +73,9 @@ no skull or scalp. A registration or segmentation method benchmarked on it will
 score unrealistically well and then fail on clinical data, which inverts the
 purpose of a benchmark.
 
-**There is no connectivity layer and no standard space.** Exports land in
-subject/world coordinates while every normative connectome and published atlas
-lives in MNI152, so the tool cannot currently feed the lesion-network-mapping and
-connectome pipelines it is otherwise well suited to.
+**There is no connectivity layer.** ~~and no standard space~~ — MNI152 export
+landed in v0.1.0 (Phase 1), so exports can now feed connectome and
+lesion-network-mapping pipelines. corticum still ships no connectome of its own.
 
 **It has never been externally validated.** No standard neuroimaging pipeline has
 ever been run on its output. Every gate to date tests internal consistency or
@@ -231,7 +230,7 @@ cannot deliver.
 
 ---
 
-## Phase 1 — Make it addressable (MNI152 export)
+## Phase 1 — Make it addressable (MNI152 export)  ✅ DONE (v0.1.0)
 
 **Why.** Highest research value per unit effort in this document. Every normative
 connectome, published atlas and lesion-network-mapping pipeline lives in MNI152.
