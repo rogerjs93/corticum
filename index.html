@@ -94,6 +94,20 @@
         border-left: 1px solid #232b35;
         backdrop-filter: blur(6px);
       }
+      /* Workflow group heading. Deliberately not a <details>: these exist to
+         chunk the list visually, and a collapsible wrapper around collapsibles
+         would just add a second thing to open. */
+      .cx-group {
+        margin: 16px 2px 6px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #5c6875;
+      }
+      .cx-group:first-child {
+        margin-top: 2px;
+      }
       .cx-sec {
         margin-bottom: 8px;
         border: 1px solid #1e2630;

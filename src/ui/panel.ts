@@ -95,6 +95,20 @@ function evidenceTag(kind: Evidence): HTMLElement {
  * remembers nothing, which is correct — a panel that restores collapse state
  * across reloads hides controls from someone who has just changed something.
  */
+/**
+ * A workflow group heading.
+ *
+ * Nine collapsible sections in one column is a list, not an interface — the
+ * numbering told you the order but not WHY one control sits next to another.
+ * These four labels chunk them by what the user is doing: change the brain,
+ * read what changed, choose how to look at it, get data in or out.
+ */
+function makeGroup(label: string): HTMLElement {
+  const d = el('div', 'cx-group');
+  d.textContent = label;
+  return d;
+}
+
 function makeSection(title: string, open = false) {
   const root = el('details', 'cx-sec');
   root.open = open;
@@ -148,12 +162,13 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   // is already loaded and every feature works on it; this exists for someone
   // who has their own FreeSurfer output. A panel that opens demanding a file
   // would turn a working demo into a dead end.
-  const secSubject = makeSection('Subject · load your own (optional)');
+  const secSubject = makeSection('7 · Subject — load your own (optional)');
   const subjectNote = el(
     'div',
     'cx-note',
-    'Showing the bundled subject — everything below works right now. ' +
-      'To use your own brain, open a FreeSurfer aparc+aseg as .nii or .nii.gz.'
+    'Showing the bundled subject — every control in this panel works right ' +
+      'now, with no file needed. To use your own brain instead, open a ' +
+      'FreeSurfer aparc+aseg as .nii or .nii.gz.'
   );
   const fileInput = el('input', 'cx-select');
   fileInput.type = 'file';
@@ -282,7 +297,7 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   // ASPECTS and the perfusion numbers — all answers to "how bad is it" — were
   // never visible together.
   const secMeasure = makeSection('4 · Measurements', true);
-  const secExport = makeSection('7 · Export');
+  const secExport = makeSection('9 · Export');
 
   const secRegion = makeSection('3 · Regional control');
 
@@ -667,7 +682,7 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   );
 
   // ---- patient (stroke_qeeg) ----------------------------------------------
-  const secPatient = makeSection('6 · Patient data (stroke_qeeg)');
+  const secPatient = makeSection('8 · Patient data (stroke_qeeg)');
 
   const patientSel = el('select', 'cx-select');
   patientSel.append(new Option('— none —', ''));
@@ -762,7 +777,7 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   // moving the camera through it, and bundling them put the modality selector
   // below three lens sliders.
   const secView = makeSection('5 · Imaging', true);
-  const secNav = makeSection('5b · Navigation');
+  const secNav = makeSection('6 · Navigation');
 
   const modeRow = slider('x-ray', {
     min: 0,
@@ -1040,13 +1055,17 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   secExport.body.append(exportBtn, exportNote);
 
   root.append(
-    secSubject.root,
+    makeGroup('Disease'),
     secTime.root,
     secStroke.root,
     secRegion.root,
+    makeGroup('Measure'),
     secMeasure.root,
+    makeGroup('View'),
     secView.root,
     secNav.root,
+    makeGroup('Data'),
+    secSubject.root,
     secPatient.root,
     secExport.root
   );
