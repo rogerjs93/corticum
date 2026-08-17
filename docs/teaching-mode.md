@@ -3,13 +3,24 @@
 Decided before any case exists, because the shell determines what a case can
 ask, and three cases written against the wrong shell is a rewrite.
 
-Status: **first slice built and gated** (`pick-region`, one case). Phase 7 of
+Status: **built and gated** — `pick-region`, three cases. Phase 7 of
 [`../ROADMAP.md`](../ROADMAP.md).
 
 ```
-#/case/mca-territory-01          the slice
+#/case/mca-territory-01          M1 - neglect, gaze preference
+#/case/field-defect-01           PCA - homonymous field cut
+#/case/aphasia-no-weakness-01    M2 inferior - fluent aphasia, FULL strength
 await __corticum.verifyCases()   the leak gate
 ```
+
+The three are a set. One and three are the same artery at different calibres,
+separated only by whether strength is preserved; one and two are both left-sided
+inattention, separated only by whether the patient is aware of it. Each pair
+turns on a single examination finding, which is the point.
+
+**Cases 2 and 3 were added with ZERO code changes**, which is the schema doing
+its job: cases are content, and if adding one needs a code change the schema is
+wrong.
 
 ### What the first run taught
 
@@ -159,6 +170,23 @@ A case whose task is `pick-region` on an M1 occlusion fails if any permitted
 control names the MCA.
 
 This is the one gate that has to exist before the second case is written.
+
+## 9a. Constraint found by writing case 4
+
+`pick-region` picks the FIRST surface a ray hits, so **only territories exposed
+on the lateral convexity can be answered by clicking.**
+
+The best case in the set is the one that could not ship: a lacunar syndrome —
+pure motor deficit of face, arm and leg with no aphasia, no neglect and full
+fields — where the infarct sits in the lentiform and the teaching point is that
+deep perforators are end arteries with no collateral supply. The learner would
+have to cut into the brain to click it, and the teach shell renders no slice
+control because the panel is suppressed.
+
+That is a gap in the SHELL, not a reason to write a vaguer case. `allow`
+currently only *removes* affordances — it blocks shortcuts — and does not yet
+*provide* the controls it grants. Deep cases land when it does, and that is the
+next piece of teaching-mode work.
 
 ## 9. First build — vertical slice
 
