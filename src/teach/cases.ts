@@ -123,21 +123,64 @@ export const CASES: Case[] = [
     evidence: 'literature',
     cite: 'Wernicke aphasia and the MCA inferior division; language lateralisation in right-handers (~95%).',
   },
+  {
+    id: 'lacune-01',
+    stem:
+      'A 64-year-old with many years of poorly controlled blood pressure wakes ' +
+      'with weakness of the face, arm and leg on the right, all affected to ' +
+      'much the same degree. Speech is slurred, but language itself is intact ' +
+      '— words are found normally, instructions are followed, and there is no ' +
+      'inattention. The visual fields are full.\n\n' +
+      'The infarct is not on the surface. Cut into the brain to find it.\n\n' +
+      'This is a simulation, not a real patient.',
+    state: {
+      stroke: {
+        enabled: true,
+        site: 'lsa',
+        side: 'left',
+        collateralGrade: 3,
+        hoursSinceOnset: 12,
+        recanalisationHour: Infinity,
+      },
+    },
+    // `slice` is what makes this answerable — the target is nowhere near the
+    // convexity. Collateral grade is deliberately 3: excellent collaterals, and
+    // the deep tissue infarcts anyway, which is the whole point.
+    allow: ['rotate', 'zoom', 'pick', 'slice', 'modality', 'xray'],
+    task: {
+      kind: 'pick-region',
+      prompt: 'Cut an axial plane, then click the infarcted structure.',
+      measure: 'infarct-territory',
+    },
+    because:
+      'Weakness of face, arm and leg in equal measure, with NO disturbance of ' +
+      'language, no inattention and full fields, is a pure motor syndrome. ' +
+      'Cortical signs are absent because no cortex is involved: the lesion sits ' +
+      'in the deep grey and internal capsule, where the descending motor fibres ' +
+      'are packed close enough that a small infarct takes the whole half of the ' +
+      'body. A surface infarct large enough to weaken the leg as much as the ' +
+      'face would almost never spare language and attention as well.\n\n' +
+      'Note the collaterals in this case are EXCELLENT, and the tissue died ' +
+      'regardless. The small perforating arteries are end arteries with no ' +
+      'collateral supply at all, which is why good collaterals rescue the ' +
+      'cortical rim and never rescue the deep grey.',
+    evidence: 'literature',
+    cite: 'Fisher, lacunar syndromes; pure motor hemiparesis and the internal capsule. Perforator end-artery anatomy.',
+  },
 ];
 
 /**
- * Constraint on case design, learned by trying to write a deep one.
+ * Historical note, kept because the constraint shaped the shell.
  *
- * `pick-region` picks the FIRST surface a ray hits, so only territories exposed
- * on the lateral convexity can be answered by clicking. A lacunar case — pure
- * motor deficit, no cortical signs, infarct in the lentiform — is a better
- * teaching question than any of these, and it is currently unanswerable: the
- * learner would have to cut into the brain, and the teach shell renders no
- * slice control because the panel is suppressed.
+ * `pick-region` picks the FIRST surface a ray hits, so for a while only
+ * territories exposed on the lateral convexity were answerable at all. A deep
+ * case could not ship: reaching the lentiform means cutting into the brain, and
+ * `allow` only REMOVED affordances — it blocked shortcuts and provided nothing.
  *
- * That is a gap in the SHELL, not a reason to write a vaguer case. `allow`
- * currently only removes affordances (it blocks shortcuts); it does not yet
- * provide the controls it grants. Deep cases land when it does.
+ * That was a gap in the shell rather than a reason to write a vaguer case, and
+ * it is now closed: granting `slice` renders a cut control, and the picker
+ * already honours the clip, so a click on the cut face names the tissue there.
+ * `lacune-01` below is the case that was blocked.
  */
 export function findCase(id: string): Case | undefined {
   return CASES.find((c) => c.id === id);

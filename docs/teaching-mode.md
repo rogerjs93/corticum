@@ -3,13 +3,14 @@
 Decided before any case exists, because the shell determines what a case can
 ask, and three cases written against the wrong shell is a rewrite.
 
-Status: **built and gated** — `pick-region`, three cases. Phase 7 of
+Status: **built and gated** — `pick-region`, four cases, cortical and deep. Phase 7 of
 [`../ROADMAP.md`](../ROADMAP.md).
 
 ```
 #/case/mca-territory-01          M1 - neglect, gaze preference
 #/case/field-defect-01           PCA - homonymous field cut
 #/case/aphasia-no-weakness-01    M2 inferior - fluent aphasia, FULL strength
+#/case/lacune-01                 lenticulostriate - deep, needs a cut
 await __corticum.verifyCases()   the leak gate
 ```
 
@@ -171,22 +172,36 @@ control names the MCA.
 
 This is the one gate that has to exist before the second case is written.
 
-## 9a. Constraint found by writing case 4
+## 9a. `allow` had to PROVIDE, not just remove
 
-`pick-region` picks the FIRST surface a ray hits, so **only territories exposed
-on the lateral convexity can be answered by clicking.**
+`pick-region` picks the FIRST surface a ray hits, so at first only territories on
+the lateral convexity were answerable. The best case in the set could not ship: a
+lacunar syndrome, pure motor deficit of face, arm and leg with no cortical signs,
+infarct in the lentiform. Answering it means cutting into the brain — and the
+panel that normally provides a cut control is suppressed, by design.
 
-The best case in the set is the one that could not ship: a lacunar syndrome —
-pure motor deficit of face, arm and leg with no aphasia, no neglect and full
-fields — where the infarct sits in the lentiform and the teaching point is that
-deep perforators are end arteries with no collateral supply. The learner would
-have to cut into the brain to click it, and the teach shell renders no slice
-control because the panel is suppressed.
+The root cause was that `allow` only ever *removed* affordances. It blocked
+shortcuts and provided nothing, so a case could grant `slice` and the learner
+still had no way to slice. All four cases also granted `modality` with no
+sequence selector to use.
 
-That is a gap in the SHELL, not a reason to write a vaguer case. `allow`
-currently only *removes* affordances — it blocks shortcuts — and does not yet
-*provide* the controls it grants. Deep cases land when it does, and that is the
-next piece of teaching-mode work.
+Granted affordances now render controls, and only granted ones. The picker
+already honoured the clip, so a click on the cut face names the tissue there —
+verified: an axial cut then a pick at screen centre returns deep tissue, not
+cortex.
+
+`lacune-01` is that case, now shipped. Its grading is the sharpest in the set:
+
+| Click | Grade |
+|---|---|
+| left putamen / pallidum / caudate | full |
+| right putamen | partial — right supply, wrong hemisphere |
+| **left thalamus** | **none** — deep, correct side, DIFFERENT perforator supply |
+| left cortex | none |
+
+That thalamus row is the point. It is the distinction between a pure motor and a
+pure sensory syndrome, and a scorer that waved through "any deep structure on the
+left" would teach the opposite of what the case is for.
 
 ## 9. First build — vertical slice
 

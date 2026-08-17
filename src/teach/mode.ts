@@ -51,6 +51,92 @@ function gateShortcuts(allow: Affordance[]): () => void {
   return () => window.removeEventListener('keydown', onKey, true);
 }
 
+/**
+ * Controls for the affordances a case GRANTS.
+ *
+ * `allow` used to only remove things — it blocked shortcuts — so a case could
+ * grant `slice` or `modality` and the learner still had no way to use them,
+ * because the panel that normally provides those controls is suppressed. That
+ * made every deep case unanswerable: `pick-region` hits the first surface, so
+ * reaching the lentiform means cutting into the brain first.
+ *
+ * Only granted affordances render. Nothing here may display the answer.
+ */
+function buildControls(brain: BrainScene, allow: Affordance[]): HTMLElement | null {
+  const granted = new Set(allow);
+  const bar = el('div', 'tm-controls');
+  let any = false;
+
+  if (granted.has('slice')) {
+    any = true;
+    const row = el('div', 'tm-crow');
+    row.append(el('span', 'tm-clabel', 'cut'));
+
+    // The offset only means something once a plane is chosen, so it stays
+    // disabled in 3D rather than silently doing nothing.
+    const offset = el('input', 'tm-slider');
+    offset.type = 'range';
+    offset.min = '-70';
+    offset.max = '70';
+    offset.step = '1';
+    offset.value = '0';
+    offset.disabled = true;
+
+    let axis: 'sagittal' | 'axial' | 'coronal' | null = null;
+    const buttons: HTMLButtonElement[] = [];
+    const apply = () => {
+      brain.setSliceView(axis, Number(offset.value));
+      offset.disabled = axis === null;
+      for (const b of buttons) b.classList.toggle('tm-on', b.dataset.axis === (axis ?? '3d'));
+    };
+
+    for (const [key, label] of [
+      ['3d', '3D'],
+      ['axial', 'axial'],
+      ['coronal', 'coronal'],
+      ['sagittal', 'sagittal'],
+    ] as const) {
+      const b = el('button', 'tm-btn', label);
+      b.dataset.axis = key;
+      b.addEventListener('click', () => {
+        axis = key === '3d' ? null : (key as 'sagittal' | 'axial' | 'coronal');
+        apply();
+      });
+      buttons.push(b);
+      row.append(b);
+    }
+    offset.addEventListener('input', apply);
+    bar.append(row, offset);
+    apply();
+  }
+
+  if (granted.has('modality')) {
+    any = true;
+    const row = el('div', 'tm-crow');
+    row.append(el('span', 'tm-clabel', 'sequence'));
+    for (const [key, label] of [
+      ['anatomic', 'anatomic'],
+      ['t1', 'T1'],
+      ['t2', 'T2'],
+      ['flair', 'FLAIR'],
+      ['dwi', 'DWI'],
+      ['ct', 'CT'],
+    ] as const) {
+      const b = el('button', 'tm-btn', label);
+      b.addEventListener('click', () => {
+        brain.setModality(key as Parameters<BrainScene['setModality']>[0]);
+        for (const other of row.querySelectorAll('.tm-btn')) other.classList.remove('tm-on');
+        b.classList.add('tm-on');
+      });
+      if (key === 'anatomic') b.classList.add('tm-on');
+      row.append(b);
+    }
+    bar.append(row);
+  }
+
+  return any ? bar : null;
+}
+
 export interface TeachHandle {
   root: HTMLElement;
   dispose: () => void;
@@ -73,7 +159,8 @@ export function mountCase(brain: BrainScene, c: Case): TeachHandle {
   const reveal = el('div', 'tm-reveal');
   reveal.hidden = true;
 
-  root.append(stem, prompt, feedback, reveal);
+  const controls = buildControls(brain, c.allow);
+  root.append(stem, prompt, ...(controls ? [controls] : []), feedback, reveal);
 
   let answered = false;
 
