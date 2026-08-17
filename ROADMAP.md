@@ -418,16 +418,32 @@ irregularity — fall within the distribution measured from a real lesion datase
 below reuses machinery built above; Phase 3 cohorts give an unlimited supply of
 unseen cases.
 
-**Work**
-- Guided cases requiring a **decision**, not observation: given this DWI, this
-  FLAIR and this clock, would you thrombolyse? The DWI-FLAIR mismatch, ASPECTS and
-  perfusion mismatch readouts already support this end to end.
-- Case generator drawing from Phase 3 cohorts so learners never see one brain twice.
-- Self-check revealing ground truth *after* the learner commits — something no real
-  teaching case can offer.
+**Shell design is decided** — see [`docs/teaching-mode.md`](docs/teaching-mode.md).
+The short version: it is a MODE, not a panel section, because the parameter panel
+IS the answer key. A case is a `DiseaseState` plus a question, so cases are data
+rather than code and Phase 3 cohorts can emit them. The learner answers by
+**acting on the tool** — clicking the territory, choosing the sequence that would
+show it — and the answer is **measured from the running model, never authored**,
+because a typed-in key is a second source of truth that drifts.
 
-**Gate.** A case cannot ship unless every clinical claim in its feedback carries an
-evidence tag, same rule as the parameter panel.
+**Work**
+- The mode shell: `#/case/<id>`, panel suppressed, per-case `allow` list.
+- One task type end to end (`pick-region` on a stroke), scored from the territory
+  LUT and core mask.
+- Reveal: measured ground truth plus the counterfactual split — the brain that
+  patient would have had, which no real teaching case can show.
+- Later: case generator drawing on Phase 3 cohorts, so learners never see one
+  brain twice.
+
+**Gate.** Two. Every clinical claim in reveal text carries an evidence tag, same
+rule as the parameter panel. And **a case must not leak its answer** — render it
+with its own `allow` list, scrape the visible text and enabled controls, and
+assert the answer is not among them. An author cannot self-check that; they
+already know the answer and will not see it on screen.
+
+**Constraint until Phase 5.** Qualitative facts only. "Is DWI positive while FLAIR
+is still negative?" is fair; "how many hours since onset?" asks about a clock the
+project documents as uncalibrated.
 
 **Effort** M, ongoing. **Risk** low. **Runs on** this PC.
 
