@@ -3,7 +3,31 @@
 Decided before any case exists, because the shell determines what a case can
 ask, and three cases written against the wrong shell is a rewrite.
 
-Status: **design agreed, not built.** Phase 7 of [`../ROADMAP.md`](../ROADMAP.md).
+Status: **first slice built and gated** (`pick-region`, one case). Phase 7 of
+[`../ROADMAP.md`](../ROADMAP.md).
+
+```
+#/case/mca-territory-01          the slice
+await __corticum.verifyCases()   the leak gate
+```
+
+### What the first run taught
+
+**The leak gate caught the very case it shipped with**, which is the outcome
+that justifies building it before the second case. The stem says *"the gaze is
+driven to the right"* and the answer side is right, so a bare word match on
+`left`/`right` flagged it.
+
+That was a FALSE positive, and fixing it sharpened the rule. A lateralised
+vignette *must* say left and right — those signs are the input to the reasoning.
+The leak is the side welded to the anatomy (*"right MCA"*), not the side of a
+symptom. Matching bare sides would have failed every honest case and trained the
+author to delete the clinical detail that makes a case worth doing.
+
+**Routing needed a `hashchange` reload.** Pasting `#/case/x` into an
+already-loaded page silently did nothing, because the shell is chosen at boot.
+Entering, leaving or switching cases now rebuilds — the panel especially must
+not survive into a case.
 
 ## 1. It is a MODE, not a section
 

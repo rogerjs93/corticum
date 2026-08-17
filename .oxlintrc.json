@@ -9,7 +9,7 @@
     "no-underscore-dangle": [
       "warn",
       {
-        "allow": ["__BUILD__", "__VERSION__", "__corticum"]
+        "allow": ["__BUILD__", "__VERSION__", "__corticum", "__corticumTeach"]
       }
     ]
   },

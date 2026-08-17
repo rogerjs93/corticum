@@ -13,6 +13,9 @@ import { PerfusionProbe } from './verify/perfusionProbe';
 import { braakInfo } from './disease/braak';
 import { TERRITORY, territoryOf } from './disease/territories';
 import { createPanel } from './ui/panel';
+import { findCase } from './teach/cases';
+import { mountCase } from './teach/mode';
+import { auditCases, territorySanity } from './teach/leakGate';
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
 const hud = document.getElementById('hud') as HTMLDivElement;
@@ -182,7 +185,24 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
     })),
   });
 
-  document.body.append(createPanel(brain, field.regions));
+  // Teaching mode suppresses the control panel entirely. This is not a style
+  // choice: the panel IS the answer key — the Lesion dropdown reads
+  // "MCA — M1 (proximal)" and Measurements prints ASPECTS. A case cannot be
+  // asked with it on screen.
+  const caseId = location.hash.startsWith('#/case/')
+    ? decodeURIComponent(location.hash.slice('#/case/'.length).split('?')[0])
+    : null;
+  const theCase = caseId ? findCase(caseId) : undefined;
+
+  if (theCase) {
+    await applyDisease(theCase.state);
+    const handle = mountCase(brain, theCase);
+    document.body.append(handle.root);
+    (window as unknown as Record<string, unknown>).__corticumTeach = handle;
+  } else {
+    if (caseId) console.warn(`corticum: no case "${caseId}" — showing the normal view`);
+    document.body.append(createPanel(brain, field.regions));
+  }
 
   (window as unknown as Record<string, unknown>).__corticum = {
     mode: 'brain',
@@ -1197,6 +1217,20 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
      *
      * `__corticum.exportNifti(128)` after setting up any disease state.
      */
+    /**
+     * Case gate. A case must not give away its own answer, and an author cannot
+     * check that themselves — they already know it, so they do not see it on
+     * screen.
+     */
+    verifyCases(): Record<string, unknown> {
+      const audits = auditCases();
+      return {
+        cases: audits,
+        territory: territorySanity(),
+        pass: audits.every((a) => a.pass) && territorySanity().ok,
+      };
+    },
+
     async exportNifti(
       gridDim = 128,
       download = true,
@@ -1849,5 +1883,20 @@ async function boot(): Promise<void> {
     }
   }
 }
+
+// Entering or leaving a case changes which shell is mounted, and the panel
+// must not survive into a case — it is the answer key. Rebuilding is the honest
+// way to switch: pasting `#/case/x` into the address bar of an already-loaded
+// page is a normal thing to do, and it silently did nothing before.
+let lastRoute = location.hash.split('?')[0];
+window.addEventListener('hashchange', () => {
+  const route = location.hash.split('?')[0];
+  const changed = route !== lastRoute;
+  // Entering a case, leaving one, or moving between two: all three need the
+  // shell rebuilt, and all three involve a case route on one side or the other.
+  const involvesCase = route.startsWith('#/case/') || lastRoute.startsWith('#/case/');
+  lastRoute = route;
+  if (changed && involvesCase) location.reload();
+});
 
 void boot();
