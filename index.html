@@ -121,6 +121,49 @@
       .cx-group:first-child {
         margin-top: 2px;
       }
+      /* Slide the panel out rather than display:none — the toggle button rides
+         with it and must stay on screen, and a transform keeps the layout and
+         the scroll position intact for when it comes back. */
+      /* 100%, not the 290px width value: the panel's rendered box is 319px once
+         padding and border are counted, so a pixel figure copied from `width`
+         leaves a strip of it on screen — and would drift again the next time
+         the padding changes. */
+      .cx-panel.cx-hidden {
+        transform: translateX(100%);
+      }
+      .cx-panel {
+        transition: transform 0.16s ease;
+      }
+      .cx-hide {
+        position: absolute;
+        top: 8px;
+        left: -26px;
+        width: 22px;
+        height: 26px;
+        padding: 0;
+        background: rgba(10, 13, 18, 0.9);
+        color: #8fa0b4;
+        border: 1px solid #232b35;
+        border-right: none;
+        border-radius: 4px 0 0 4px;
+        font: inherit;
+        font-size: 13px;
+        line-height: 24px;
+        cursor: pointer;
+      }
+      .cx-hide:hover {
+        color: #d7dee8;
+        background: #1d2530;
+      }
+      /* Evidence key: the same tags used throughout, shown once up front. */
+      .cx-evkey {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        margin: 2px 2px 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #1e2630;
+      }
       .cx-sec {
         margin-bottom: 8px;
         border: 1px solid #1e2630;

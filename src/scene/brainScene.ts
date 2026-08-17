@@ -80,7 +80,7 @@ export interface BrainScene {
   /** ASPECTS for the affected hemisphere; null when no stroke is active. */
   measureAspects: () => Promise<AspectsResult | null>;
   /** Emit ground-truth NIfTI volumes for the current state. */
-  exportNifti: (gridDim?: number) => Promise<ExportResult>;
+  exportNifti: (gridDim?: number, opts?: { mni?: boolean }) => Promise<ExportResult>;
   /** Core / hypoperfusion volumes and DEFUSE-3 eligibility; null with no stroke. */
   measurePerfusion: () => Promise<PerfusionResult | null>;
   setScenario: (id: string | null) => Promise<void>;
@@ -760,10 +760,28 @@ export async function createBrainScene(
   // Both probes are built on first use: their storage buffers are tens of
   // megabytes and most sessions never touch either.
   let exportProbeScene: ExportProbe | null = null;
-  const exportNifti = async (gridDim = 128): Promise<ExportResult> => {
+  const exportNifti = async (
+    gridDim = 128,
+    opts: { mni?: boolean } = {}
+  ): Promise<ExportResult> => {
     exportProbeScene ??= new ExportProbe(
       engine, () => scene.render(), field, operators, derived);
-    return exportProbeScene.run(gridDim, { download: true });
+    return exportProbeScene.run(gridDim, {
+      download: true,
+      mni: opts.mni,
+      // The panel button is the path almost everyone actually uses, and it was
+      // exporting with NO parameter record — so the sidecar of a real user's
+      // export said `parameters: null` while the console API recorded them.
+      // Same failure as the gate that certified a code path nobody ran.
+      provenance: {
+        state: structuredClone(disease),
+        regions: modifiers.modified().map((mod) => ({
+          name: mod.region.name,
+          vulnerability: mod.vulnerability,
+          overrideMm: mod.overrideMm,
+        })),
+      },
+    });
   };
   const measureAspects = async (): Promise<AspectsResult | null> => {
     if (!disease.stroke.enabled) return null;

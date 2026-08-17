@@ -156,6 +156,17 @@ function slider(label: string, o: SliderOpts) {
 export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLElement {
   const root = el('div', 'cx-panel');
 
+  // Evidence key.
+  //
+  // The tags are the most important thing in this interface — they are what
+  // separates "this is what the evidence says" from "this looks about right" —
+  // and until now the only way to learn what a colour meant was to hover it.
+  // Honesty that has to be discovered is not doing its job.
+  const evidenceKey = el('div', 'cx-evkey');
+  for (const kind of ['literature', 'derived', 'plausible-approximation'] as Evidence[]) {
+    evidenceKey.append(evidenceTag(kind));
+  }
+
   // ---- subject --------------------------------------------------------------
   //
   // First in the list but COLLAPSED and entirely optional. The bundled subject
@@ -883,15 +894,47 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   // Ground-truth export. Deliberately a plain button with no options: the
   // useful thing is that whatever is on screen right now can be dropped into a
   // registration benchmark with its true deformation attached.
+  // Space choice. Subject space is the default because it is what the samples
+  // actually sit on; MNI152 rewrites only the header, so a normative connectome
+  // or a published atlas can read the coordinates without anything being
+  // resampled and without the ground-truth displacement losing exactness.
+  const spaceRow = el('div', 'cx-inline-row');
+  const spaceSelect = el('select', 'cx-select cx-inline');
+  for (const [value, label] of [
+    ['native', 'subject space (RAS)'],
+    ['mni', 'MNI152 — for atlases / connectomes'],
+  ]) {
+    const o = el('option', undefined, label);
+    o.value = value;
+    spaceSelect.append(o);
+  }
+  spaceRow.append(spaceSelect);
+  const spaceNote = el('div', 'cx-cite');
+  const setSpaceNote = () => {
+    spaceNote.textContent =
+      spaceSelect.value === 'mni'
+        ? 'Affine only (sform code 4). The voxel grid stays the subject’s — ' +
+          'resample downstream if your pipeline needs an MNI grid.'
+        : 'The grid the samples were computed on.';
+  };
+  setSpaceNote();
+  spaceSelect.addEventListener('change', setSpaceNote);
+
   const exportBtn = el('button', 'cx-btn cx-wide', 'export NIfTI (ground truth)');
   const exportNote = el('div', 'cx-note');
   exportBtn.addEventListener('click', async () => {
     exportBtn.disabled = true;
     exportBtn.textContent = 'exporting…';
     try {
-      const r = await brain.exportNifti(128);
+      const wantMni = spaceSelect.value === 'mni';
+      const r = await brain.exportNifti(128, { mni: wantMni });
+      // Report the space that was WRITTEN, not the one requested — a payload
+      // with no MNI transform falls back to subject space, and the UI must not
+      // paper over that.
+      const grid = (r.provenance as { grid?: { space?: string } }).grid;
       exportNote.textContent =
         `${r.files.length} files, ${(r.bytes / 1e6).toFixed(0)} MB at ${r.dim}³ · ` +
+        `${grid?.space ?? 'unknown space'} · ` +
         `max ground-truth displacement ${r.maxDisplacementMm.toFixed(2)} mm`;
     } catch (e) {
       exportNote.textContent = `export failed: ${String(e)}`;
@@ -987,6 +1030,14 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
     splitNote
   );
 
+  // Keyboard shortcuts used to be advertised only in the HUD legend, which is
+  // now collapsed by default — so they became undiscoverable. A shortcut nobody
+  // can find is a feature that does not exist, and the panel is where someone
+  // looks for what a control does.
+  const keysNote = el('div', 'cx-cite');
+  keysNote.innerHTML =
+    '<b>X</b> specimen ⇄ x-ray &nbsp; <b>V</b> ventricles &nbsp; <b>A</b> arteries';
+
   secNav.body.append(
     cutRowTop,
     cutOffset.root,
@@ -994,7 +1045,8 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
     lensMagRow.root,
     lensSizeRow.root,
     fisheyeRow.root,
-    ventBtn
+    ventBtn,
+    keysNote
   );
 
   // ---- live volume readout -------------------------------------------------
@@ -1052,9 +1104,34 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
   }
 
   secMeasure.body.append(volumeOut, scalesOut, aspectsOut, perfusionOut);
-  secExport.body.append(exportBtn, exportNote);
+  secExport.body.append(spaceRow, spaceNote, exportBtn, exportNote);
+
+  // Panel toggle.
+  //
+  // 290px of a 1280px viewport, permanently — with no way to see the anatomy
+  // full width, which is exactly what you want when showing this to someone.
+  // The button stays visible when the panel is hidden, or the controls become
+  // unreachable; `H` does the same thing from the keyboard.
+  const hideBtn = el('button', 'cx-hide', '›');
+  hideBtn.title = 'Hide panel (H)';
+  hideBtn.setAttribute('aria-label', 'Hide panel');
+  const setHidden = (hidden: boolean) => {
+    root.classList.toggle('cx-hidden', hidden);
+    hideBtn.textContent = hidden ? '‹' : '›';
+    hideBtn.title = hidden ? 'Show panel (H)' : 'Hide panel (H)';
+    hideBtn.setAttribute('aria-label', hidden ? 'Show panel' : 'Hide panel');
+  };
+  hideBtn.addEventListener('click', () => setHidden(!root.classList.contains('cx-hidden')));
+  window.addEventListener('keydown', (e) => {
+    // Ignore while typing in the region search, or H becomes unusable there.
+    const t = e.target as HTMLElement | null;
+    if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+    if (e.key === 'h' || e.key === 'H') setHidden(!root.classList.contains('cx-hidden'));
+  });
 
   root.append(
+    hideBtn,
+    evidenceKey,
     makeGroup('Subject'),
     secSubject.root,
     makeGroup('Disease'),
