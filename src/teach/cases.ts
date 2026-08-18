@@ -259,6 +259,100 @@ export const CASES: Case[] = [
     evidence: 'literature',
     cite: 'Plum & Posner, locked-in syndrome; ventral pontine anatomy and midline vertebrobasilar supply.',
   },
+  {
+    id: 'broca-01',
+    title: 'Effortful speech, weak face and arm',
+    stem:
+      'A 61-year-old, right-handed, has sudden weakness of the right side of ' +
+      'the face and of the right arm. The LEG is barely affected — they can ' +
+      'still walk. Speech is sparse and effortful, produced in short broken ' +
+      'phrases, and they are visibly frustrated by it. They follow every ' +
+      'instruction correctly and clearly understand what is said to them.\n\n' +
+      'This is a simulation, not a real patient.',
+    state: {
+      stroke: {
+        enabled: true,
+        site: 'm2sup',
+        side: 'left',
+        collateralGrade: 2,
+        hoursSinceOnset: 4,
+        recanalisationHour: Infinity,
+      },
+    },
+    allow: ['rotate', 'zoom', 'pick', 'modality', 'slice', 'xray'],
+    // MODEL LIMIT worth knowing before writing another motor case: the
+    // territory LUT assigns each parcel to ONE artery, and `precentral` — which
+    // really spans the midline leg area (medial supply) and the face/hand on
+    // the convexity — is assigned wholesale to the medial one. So the motor
+    // strip scores `none` here. The reasoning below therefore routes through
+    // the frontal operculum, which the model does place in this branch, rather
+    // than through the homunculus. Teaching a split the model cannot represent
+    // would mark correct reasoning wrong.
+    task: {
+      kind: 'pick-region',
+      prompt: 'Click the region where speech production lives.',
+      measure: 'infarct-territory',
+    },
+    because:
+      'Effortful, non-fluent speech WITH preserved comprehension is an ' +
+      'expressive aphasia. The patient knows what they want to say and cannot ' +
+      'get it out, which is why they are frustrated — the receptive case is ' +
+      'not, because they cannot tell anything is wrong. In a right-handed ' +
+      'patient language sits on the left, so the lesion is left and the ' +
+      'weakness is on the right.\n\n' +
+      'Expressive language lives in the frontal operculum, on the lateral ' +
+      'convexity just in front of the motor strip — so the infarct that takes ' +
+      'speech production also takes the face and hand next door, and spares ' +
+      'the leg further over. That neighbourhood IS the answer here.\n\n' +
+      'Compare this with the fluent case: the SAME artery, the other branch. ' +
+      'There language failed and strength was normal; here strength fails and ' +
+      'comprehension survives. One vessel, two branches, opposite examinations.',
+    evidence: 'literature',
+    cite: 'Broca aphasia and the MCA superior division; motor homunculus and the medial leg representation.',
+  },
+
+  {
+    id: 'ipsilateral-ataxia-01',
+    title: 'Sudden vertigo and a veering walk',
+    stem:
+      'A 48-year-old develops abrupt spinning vertigo with vomiting, and ' +
+      'cannot stand without falling towards the LEFT. Reaching for an object ' +
+      'with the left hand, they overshoot it and correct clumsily. The eyes ' +
+      'beat on lateral gaze. Strength is FULL in all four limbs, sensation is ' +
+      'intact, the face is symmetrical, and language is normal.\n\n' +
+      'This is a simulation, not a real patient.',
+    state: {
+      stroke: {
+        enabled: true,
+        site: 'pica',
+        side: 'left',
+        collateralGrade: 2,
+        hoursSinceOnset: 7,
+        recanalisationHour: Infinity,
+      },
+    },
+    allow: ['rotate', 'zoom', 'pick', 'modality', 'slice', 'xray'],
+    task: {
+      kind: 'pick-region',
+      prompt: 'Rotate to see the underside of the brain, then click the infarct.',
+      measure: 'infarct-territory',
+    },
+    because:
+      'Abrupt vertigo with limb clumsiness and nystagmus, and NO weakness or ' +
+      'sensory loss, points away from the cerebral hemispheres altogether.\n\n' +
+      'Now the side — because this case inverts the rule every other case here ' +
+      'teaches. The corticospinal tract decussates, so a hemisphere lesion ' +
+      'produces its deficit on the OPPOSITE side of the body. The pathways ' +
+      'through this structure cross twice, which cancels out, so its signs ' +
+      'appear on the SAME side as the lesion. The patient falls TOWARDS the ' +
+      'lesion, not away from it. Applying the contralateral rule here puts you ' +
+      'in the wrong hemisphere every time.\n\n' +
+      'This matters practically. A dizzy patient with full strength is easy to ' +
+      'dismiss as benign, and swelling in this territory can compress the ' +
+      'fourth ventricle and obstruct the flow of CSF.',
+    evidence: 'literature',
+    cite: 'Ipsilateral cerebellar signs (double decussation); PICA territory infarction and fourth-ventricular compression.',
+  },
 ];
 
 /**

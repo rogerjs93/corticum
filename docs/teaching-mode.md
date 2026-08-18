@@ -3,7 +3,7 @@
 Decided before any case exists, because the shell determines what a case can
 ask, and three cases written against the wrong shell is a rewrite.
 
-Status: **built and gated** — `pick-region`, six cases, cortical and deep. Phase 7 of
+Status: **built and gated** — `pick-region`, eight cases, cortical and deep. Phase 7 of
 [`../ROADMAP.md`](../ROADMAP.md).
 
 ```
@@ -14,6 +14,8 @@ Status: **built and gated** — `pick-region`, six cases, cortical and deep. Pha
 #/case/lacune-01                 lenticulostriate - PURE MOTOR, deep
 #/case/pure-sensory-01           thalamic relay   - PURE SENSORY, deep
 #/case/locked-in-01              midline brainstem - bilateral by anatomy
+#/case/broca-01                  M2 superior - effortful speech, comprehension INTACT
+#/case/ipsilateral-ataxia-01     cerebellar  - signs on the SAME side
 await __corticum.verifyCases()   the leak gate
 ```
 
@@ -24,6 +26,13 @@ The six are a set, built so that each pair turns on ONE examination finding:
 | `mca-territory-01` / `aphasia-no-weakness-01` | same artery, different calibre — is strength preserved? |
 | `mca-territory-01` / `field-defect-01` | both left-sided inattention — is the patient AWARE of it? |
 | `lacune-01` / `pure-sensory-01` | both deep lacunes millimetres apart — motor or sensory? |
+| `broca-01` / `aphasia-no-weakness-01` | same artery, two branches — is comprehension intact? |
+
+`ipsilateral-ataxia-01` is the odd one out on purpose: seven cases teach that a
+lesion produces its deficit on the OPPOSITE side, and this one inverts it. The
+cerebellar pathways cross twice and cancel, so the patient falls TOWARDS the
+lesion. Applying the contralateral rule here lands in the wrong hemisphere every
+time, which is exactly why it is worth a case.
 
 That third pair is the sharpest, and the scorers enforce it in both directions:
 in the motor case the thalamus scores `none`, and in the sensory case the
@@ -58,6 +67,28 @@ author to delete the clinical detail that makes a case worth doing.
 already-loaded page silently did nothing, because the shell is chosen at boot.
 Entering, leaving or switching cases now rebuilds — the panel especially must
 not survive into a case.
+
+## 0a. Two things writing these cases exposed
+
+**The scorer was teaching a rule that is not universal.** Its partial-credit
+message asserted *"the deficit is contralateral to the lesion"* — true of the
+cerebrum, FALSE of the cerebellum. Adding a cerebellar case would have made the
+tool state something wrong. The scorer now reports only WHAT was measured
+("right territory, wrong side") and leaves mechanism to the case's `because`,
+which knows which rule applies to it. **Measure in the scorer, explain in the
+case.**
+
+**The territory LUT cannot represent the motor strip.** It assigns each parcel
+to ONE artery, and `precentral` — which really spans the midline leg area on the
+medial supply and the face and hand on the convexity — is assigned wholesale to
+the medial one, so it scores `none` for a superior-division occlusion. A learner
+reasoning correctly from face-and-arm weakness to the motor strip would have been
+marked wrong.
+
+`broca-01` therefore routes its reasoning through the frontal operculum, which
+the model does place in that branch, rather than through the homunculus. Writing
+a case against a distinction the model cannot make marks correct reasoning wrong,
+which is worse than not having the case.
 
 ## 0. Separate, but reachable
 

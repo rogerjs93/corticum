@@ -59,12 +59,17 @@ export function scorePickRegion(
     };
   }
   if (inTerritory && !sideOk) {
+    // States WHAT was measured and stops there. It used to add "the deficit is
+    // contralateral to the lesion", which is true of the cerebrum and FALSE of
+    // the cerebellum — whose pathways cross twice and cancel, so its signs are
+    // ipsilateral. A scorer that explains mechanism has to be right about every
+    // case that will ever exist; the case's own `because` knows which rule
+    // applies to it. Measure here, explain there.
     return {
       grade: 'partial',
       summary:
-        `${where} is the right territory but the WRONG hemisphere. The deficit ` +
-        `is contralateral to the lesion — that is the single most common way to ` +
-        `get this backwards.`,
+        `${where} is the right territory but the WRONG side. Which side a lesion ` +
+        `produces its signs on is the point of this case — see below.`,
     };
   }
   return {
