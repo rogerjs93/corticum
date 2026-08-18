@@ -45,6 +45,31 @@ function screenshotSink(): Plugin {
         });
       });
 
+      // Raw binary sink for exported volumes.
+      //
+      // The Phase 2 realism loop runs a standard tool (FSL bet, then
+      // recon-all) against the synthetic image and adjusts the acquisition
+      // model from what comes back. That means getting a .nii onto disk over
+      // and over, and a browser download dialog is the wrong shape for a loop
+      // you run twenty times. Dev server only, same as the other two sinks.
+      server.middlewares.use('/__nii', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          return res.end('POST only');
+        }
+        const name = String(req.headers['x-nii-name'] || 'volume').replace(/[^\w.-]/g, '_');
+        const chunks: Buffer[] = [];
+        req.on('data', (c: Buffer) => chunks.push(c));
+        req.on('end', () => {
+          const out = resolve(server.config.root, 'tests/artifacts/export', name);
+          mkdirSync(dirname(out), { recursive: true });
+          const buf = Buffer.concat(chunks);
+          writeFileSync(out, buf);
+          res.setHeader('content-type', 'application/json');
+          res.end(JSON.stringify({ ok: true, path: out, bytes: buf.length }));
+        });
+      });
+
       server.middlewares.use('/__shot', (req, res) => {
         if (req.method !== 'POST') {
           res.statusCode = 405;

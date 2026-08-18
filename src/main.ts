@@ -1233,6 +1233,31 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
       };
     },
 
+    /**
+     * Dev-only: export straight to `tests/artifacts/export/` instead of through
+     * a download dialog. The realism loop runs this repeatedly, and a browser
+     * download prompt is the wrong shape for something you do twenty times.
+     * Requires the dev server (the sink is middleware).
+     */
+    async exportToDisk(gridDim = 208): Promise<Record<string, unknown>> {
+      exportProbe ??= new ExportProbe(engine, () => scene.render(), field, operators, derived);
+      const r = await exportProbe.run(gridDim, {
+        download: false,
+        keep: true,
+        provenance: liveProvenance(),
+      });
+      const written: Array<Record<string, unknown>> = [];
+      for (const f of r.buffers ?? []) {
+        const res = await fetch('/__nii', {
+          method: 'POST',
+          headers: { 'x-nii-name': f.name },
+          body: f.data,
+        });
+        written.push((await res.json()) as Record<string, unknown>);
+      }
+      return { dim: r.dim, voxelMm: r.voxelMm, written };
+    },
+
     async exportNifti(
       gridDim = 128,
       download = true,
