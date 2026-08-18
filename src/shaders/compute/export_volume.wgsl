@@ -38,6 +38,13 @@ struct ExParams {
 @group(0) @binding(12) var<storage, read_write> outDisp: array<f32>;
 @group(0) @binding(13) var<uniform> params: ExParams;
 
+// Soft-edged band: 1 inside [lo, hi], ramping over `soft` at each edge. Used to
+// stack head layers without reintroducing the hard boundary that started all
+// this.
+fn band(x: f32, lo: f32, hi: f32, soft: f32) -> f32 {
+  return smoothstep(lo - soft, lo + soft, x) * (1.0 - smoothstep(hi - soft, hi + soft, x));
+}
+
 @compute @workgroup_size(4, 4, 4)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let n = u32(params.cfg.x);
@@ -63,10 +70,13 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     disp = textureSampleLevel(fwdTex, fwdSmp, sdfUvw(mat, half, params.cfg2.x), 0.0).xyz;
   }
 
-  var d = decodeSdf(
+  // Distance to the BASE parenchyma surface, before any disease operator.
+  // Kept separately because the skull is built from it: bone does not atrophy.
+  let dBase = decodeSdf(
     textureSampleLevel(sdfTex, sdfSmp, sdfUvw(mat, half, params.cfg.z), 0.0).r,
     params.cfg.w
   );
+  var d = dBase;
   if (params.cfg2.y > 0.5) {
     d = d + textureSampleLevel(offTex, offSmp, sdfUvw(mat, half, params.cfg2.x), 0.0).x;
   }
@@ -105,6 +115,42 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     tissue = mix(tissue, 0.04, pr.b);
     t1 = tissue * coverage;
   }
+
+  // ---- skull and scalp ------------------------------------------------------
+  //
+  // WHY, measured: FSL bet returned a mask 22% too large on this image, and
+  // adding a partial-volume ramp changed nothing (0.8907 -> 0.8903). bet's
+  // model is BRAIN INSIDE SKULL — it uses the bright-scalp / dark-skull
+  // signature to bound its deformable surface from OUTSIDE. With no skull
+  // there is no bound, so the surface relaxes over the sulci. See
+  // docs/experiment-0.md.
+  //
+  // Built from `dBase`, NOT from `d`. Bone does not atrophy: the vault stays
+  // put while the brain shrinks inside it, which is exactly why atrophy shows
+  // up as a widening subarachnoid gap. Driving the skull from the composed
+  // distance would shrink the head along with the brain and erase the sign.
+  //
+  // Radii are `plausible-approximation`: a uniform shell offset from the
+  // parenchyma. Real vault thickness varies, the posterior fossa and skull base
+  // are nothing like this, and there are no sinuses, no diploe layering and no
+  // foramen magnum. It exists to give a skull-stripper something to strip.
+  //
+  // Everything must fit inside the shipped SDF clip of 16 mm, beyond which the
+  // distance saturates and no shell can be placed.
+  let csfOut   = 2.5;   // subarachnoid space
+  let skullOut = 8.5;   // vault
+  let scalpOut = 12.5;  // skin and subcutaneous fat
+  let soft     = 0.7;   // ramp width, so this does not introduce a new cliff
+
+  var shell = 0.0;
+  shell = shell + 0.05 * band(dBase, 0.0,      csfOut,   soft); // CSF, dark
+  shell = shell + 0.08 * band(dBase, csfOut,   skullOut, soft); // bone, darker
+  shell = shell + 0.80 * band(dBase, skullOut, scalpOut, soft); // fat, BRIGHT
+
+  // Brain wins where there is brain; the shell fills in outside it. Blending by
+  // coverage keeps the pial ramp intact rather than stamping over it.
+  t1 = t1 + shell * (1.0 - coverage);
+
   outT1[idx] = t1;
 
   outDisp[idx * 3u] = disp.x;

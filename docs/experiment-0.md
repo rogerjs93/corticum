@@ -158,3 +158,77 @@ Two predictions in a row, both wrong, both cheap to falsify because the loop is
 idea costs a minute instead of a week. Had this been queued on the remote box in
 a batch with the noise model and the bias field, all three would have shipped
 together and the credit would have gone to whichever was listed first.
+
+---
+
+# The gate was wrong. All three conclusions above rest on a meaningless target.
+
+Before adding a third thing to chase the number, I finally asked what BET scores
+on a **real** T1 measured the same way. It should have been the first
+measurement, not the fourth.
+
+## The reference value
+
+FSL `bet` on `sample`'s own `T1.mgz`, scored against parenchyma from its
+`aparc+aseg` — identical metric, identical code path:
+
+| | Dice | oversize |
+|---|---|---|
+| real T1, f=0.3 | 0.4518 | +242.6% |
+| real T1, f=0.5 | 0.6100 | +123.3% |
+| real T1, f=0.6 | 0.6744 | +85.9% |
+| **synthetic, best over f** | **0.8838** | +18.1% |
+
+**The synthetic image does not do worse than a real brain by this metric. It
+does considerably better.**
+
+## Why
+
+BET produces a *brain plus surrounding CSF and dura* mask. That is what brain
+extraction means, and it is what downstream tools expect. It never claimed to
+reproduce the pial surface. Scoring it against a voxel-exact parenchyma mask
+measures a thing the tool does not attempt — so 0.89 was never a failing grade
+and "22% oversize" was never a defect. A real brain is 86–243% oversized by the
+same yardstick.
+
+Third time this project has built a gate that scored the wrong thing (#39 stroke
+Dice against a cortex-only truth, #43 a gate exercising a code path nobody ran).
+The tell is identical each time: a number that looks plausible, and no reference
+value to compare it against.
+
+## What the earlier conclusions are actually worth
+
+- *"BET fails quietly, 22% oversized"* — **withdrawn**. It is 18–22% oversized
+  where a real brain is 86%. That is not a failure.
+- *"Partial volume first, it is what defeats the surface fit"* — **withdrawn**,
+  and it was already falsified by measurement before this.
+- *"The binding constraint is the missing skull"* — **withdrawn**. The skull
+  bounded the surface exactly as predicted (oversize 22.6% → 16.1%, and −0.5% at
+  f=0.7), but the metric it was aimed at was meaningless.
+
+What survives: partial volume and the skull are both anatomically correct and
+both stay. They are needed by tissue segmentation and registration, which model
+partial volume explicitly, and no skull-strip evaluation of any kind is possible
+without a skull to strip. Neither is justified by the BET numbers, and the commit
+messages that implied otherwise were wrong.
+
+## The corrected gate — which the roadmap already specified
+
+Phase 2 in `ROADMAP.md` says, in writing:
+
+> Validate it by **effect on real tools**: run FSL BET, FAST, or SynthSeg across
+> a sweep of SNR and bias severity, and require their performance to degrade in
+> the direction and roughly the magnitude they degrade on real data.
+
+That is the right gate. I wrote it, then implemented "does BET get the right
+answer on synthetic", which is a different and much weaker question.
+
+**The realism signal is the DIFFERENCE between synthetic and real behaviour, not
+the absolute score on synthetic.** By that measure the current image is
+identifiably synthetic in a specific, quantified way: BET oversizes it by 18%
+where it oversizes a real brain by 86%, because the image has thin uniform CSF
+and none of the dura, cisterns or tentorium that a real vault contains.
+
+That is a concrete, falsifiable target for the next attempt, and it is the first
+one in this document that is measured against a reference rather than against
+an assumption.
