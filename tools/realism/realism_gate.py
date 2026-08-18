@@ -72,6 +72,65 @@ def bet_sweep(workdir: Path, image: Path, prefix: str, truth: np.ndarray) -> dic
     return out
 
 
+
+def fast_compare(
+    workdir: Path, brain: Path, prefix: str
+) -> dict[str, float]:
+    """Run FSL FAST on a BET-extracted brain and describe what it found.
+
+    Runs on the BET OUTPUT, i.e. the conventional pipeline. The first version
+    masked by exact ground truth instead, reasoning that this would isolate
+    tissue segmentation from BET's error. It does not work: a razor-sharp
+    parenchyma cut with an exactly-zero background makes FAST's bias-field and
+    mixture estimation diverge — it printed `MeaNsK variance nan`, collapsed all
+    three classes into one, and **exited 0**. BET's output keeps a CSF rim and a
+    softer edge, which is why the conventional order is conventional.
+
+    Measuring the pipeline as actually run is also the more honest question, and
+    the one the roadmap asks: what do real tools DO with this image.
+
+    Headline is the MIXED fraction: voxels FAST cannot assign cleanly to a
+    single class. A hard tissue-class image has almost none, because every voxel
+    is exactly one tissue; a real image has many, because real boundaries are
+    graded. That is the number the partial-volume ramp should move, and the one
+    the bet metrics were structurally unable to see.
+    """
+    docker_run(workdir, f"fast -t 1 -n 3 -o {prefix} {brain.name};")
+
+    pves = [
+        np.asarray(nib.load(workdir / f"{prefix}_pve_{k}.nii.gz").dataobj)
+        for k in range(3)
+    ]
+    sums = [float(pv.sum()) for pv in pves]
+    # FAST exits 0 even when its mixture model diverges. Refusing to report a
+    # degenerate fit is the whole point of having noticed this once.
+    if min(sums) <= 0.0:
+        # NOT an error, and not something to abort on: a tool that refuses to
+        # process the image is the strongest realism signal available, and far
+        # less ambiguous than any score. FAST converges on the real brain and
+        # collapses on this one, which is a finding worth recording as a result.
+        return {
+            "converged": False,
+            "note": "FAST mixture diverged (MeaNsK variance nan) and collapsed to one class",
+            "class_sums": [int(x) for x in sums],
+        }
+
+    stack = np.stack(pves, axis=0)
+    inside = stack.sum(axis=0) > 0.01
+    peak = stack.max(axis=0)[inside]
+    frac = [float(pv[inside].sum() / inside.sum()) for pv in pves]
+
+    return {
+        "converged": True,
+        # FAST orders classes by intensity: CSF, GM, WM for a T1.
+        "csf_frac": round(frac[0], 4),
+        "gm_frac": round(frac[1], 4),
+        "wm_frac": round(frac[2], 4),
+        "mixed_frac": round(float((peak < 0.95).sum() / peak.size), 4),
+        "mean_peak_pve": round(float(peak.mean()), 4),
+    }
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--synthetic", required=True, type=Path)
@@ -116,8 +175,52 @@ def main() -> None:
     print("  the real side is a FreeSurfer estimate. The delta is still meaningful")
     print("  because both are scored against their own best available truth.")
 
+    # ---- FAST: tissue segmentation ------------------------------------------
+    print("\nrunning fast on the synthetic image (ground-truth masked) ...")
+    fs = fast_compare(workdir, workdir / "rg_synth_0.5.nii.gz", "rg_fsynth")
+    print("running fast on the real image ...")
+    fr = fast_compare(workdir, workdir / "rg_real_0.5.nii.gz", "rg_freal")
+
+    print(f"\n{'':22}{'synthetic':>12}{'real':>12}{'delta':>12}")
+    fast_rows = {}
+    print(f"  {'converged':<20}{str(fs['converged']):>12}{str(fr['converged']):>12}")
+    fast_rows["converged"] = {"synthetic": fs["converged"], "real": fr["converged"]}
+
+    if not (fs["converged"] and fr["converged"]):
+        # The headline IS the divergence. Reporting fractions from a collapsed
+        # fit would be reporting noise dressed as data.
+        for side, r in (("synthetic", fs), ("real", fr)):
+            if not r["converged"]:
+                print(f"    {side}: {r['note']}")
+                fast_rows[f"{side}_note"] = r["note"]
+        print("")
+        print("  A tool REFUSING to process the image is the least ambiguous")
+        print("  realism signal there is -- no metric choice can flatter it.")
+    else:
+        for key, label in [
+            ("csf_frac", "CSF fraction"),
+            ("gm_frac", "GM fraction"),
+            ("wm_frac", "WM fraction"),
+            ("mixed_frac", "MIXED voxels"),
+            ("mean_peak_pve", "mean peak PVE"),
+        ]:
+            d = round(fs[key] - fr[key], 4)
+            fast_rows[key] = {"synthetic": fs[key], "real": fr[key], "delta": d}
+            print(f"  {label:<20}{fs[key]:>12.4f}{fr[key]:>12.4f}{d:>+12.4f}")
+
+    print("\n  MIXED = voxels FAST cannot assign cleanly to one class (peak PVE < 0.95).")
+    print("  A hard tissue-class image has almost none; a real image has many, because")
+    print("  real tissue boundaries are graded. This is the number the partial-volume")
+    print("  ramp should move, and the one the bet metrics could never see.")
+
     args.out.write_text(
-        json.dumps({"per_f": rows, "closest_f": best_f, "gap_oversize_pct": gap}, indent=1),
+        json.dumps(
+            {
+                "bet": {"per_f": rows, "closest_f": best_f, "gap_oversize_pct": gap},
+                "fast": fast_rows,
+            },
+            indent=1,
+        ),
         encoding="utf-8",
     )
     print(f"\n  wrote {args.out}")

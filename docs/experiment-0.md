@@ -285,3 +285,60 @@ as meaningful.
   recon-all'd; a distribution turns "is the synthetic close?" into "is the
   synthetic inside the real range?".
 - Then cisterns and dura, which is what the gap actually points at.
+
+---
+
+# FAST added to the harness — and it gives an unambiguous answer
+
+BET turned out to be a poor probe: it scores the synthetic image *better* than a
+real one, because its output is a generous brain-plus-CSF mask and any metric
+built on that is arguable. FAST is not arguable.
+
+## The result
+
+| | synthetic | real |
+|---|---|---|
+| FAST 3-class fit converged | **No** | Yes |
+
+FAST segments the real brain fine and **cannot segment the synthetic one at
+all**. It prints `MeaNsK variance nan` and collapses all three tissue classes
+into one — while exiting 0, which is how the first version of this harness
+recorded `CSF 1.0000, GM 0.0000, WM 0.0000` as though it were data.
+
+**A tool refusing to process the image is the least ambiguous realism signal
+available.** No choice of metric can flatter it, which is exactly the failure
+mode the BET work fell into.
+
+## Diagnosis, after two wrong guesses
+
+- *Zero variance in tissue interiors?* Measured coefficient of variation within
+  bands: synthetic WM 0.015, real 0.018. Comparable. **Wrong** — and wrong
+  because the measurement was badly built: selecting voxels *within* a narrow
+  intensity band imposes that band's width as the apparent spread.
+- *Intensity scale too small (0–0.78 vs 0–129)?* Scaled by 200 and re-ran.
+  Still `MeaNsK variance nan`. **Wrong.**
+- **Mass concentration.** Measured properly, on the BET-extracted brain:
+
+  | | top-2 intensities hold |
+  |---|---|
+  | synthetic | **49.9%** of voxels |
+  | real | 13.0% |
+
+  Half the synthetic image sits on two exact values. A Gaussian fitted to a
+  delta spike drives its component variance to zero, and the fit dies.
+
+## What this makes the next step
+
+**Rician noise, on evidence rather than intuition.** Noise is not decoration
+here — it is what turns two delta spikes into two distributions and makes the
+image fittable at all. The target is unambiguous and binary: FAST must converge.
+
+Note this reverses the priority twice over. The original guess was partial
+volume, then skull. Both are anatomically right and both stay, and neither was
+the blocker. Noise was, and it took a tool that fails loudly to show it.
+
+## Harness change
+
+A collapsed fit is now recorded as a **result**, not an abort. A tool declining
+to run is a measurement, and the harness that hides it is worse than no harness
+— which the first version demonstrated by reporting the collapse as clean data.
