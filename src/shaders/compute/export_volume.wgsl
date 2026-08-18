@@ -74,13 +74,36 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 
   // Synthetic T1: myelin bright, CSF dark, background zero. Same mapping the
   // renderer's modality view uses, and equally NOT a pulse-sequence simulation.
+  //
+  // PARTIAL VOLUME. This used to be `if (d < 0.0)` — a hard binary cutoff, so a
+  // voxel was either full tissue or exactly zero and the boundary was a cliff
+  // from 0.465 to 0.000. Measured consequence: FSL bet's deformable surface had
+  // no gradient to settle on, relaxed into a smooth envelope, and returned a
+  // brain-shaped mask 22% TOO LARGE at Dice 0.8907 — a number that reads as
+  // fine. See docs/experiment-0.md.
+  //
+  // The fix needs no invented parameter. `d` is an exact signed distance in mm,
+  // so the fraction of a voxel lying inside the surface is a geometric fact:
+  // a voxel of side v centred d from the boundary is covered by
+  // clamp(0.5 - d/v, 0, 1). At d = -v/2 it is full, at d = +v/2 empty, at the
+  // surface exactly half. That is a real partial-volume ramp one voxel wide,
+  // derived rather than tuned — and it is available here precisely because the
+  // geometry is generated rather than measured.
+  let voxMm = 2.0 * half / params.cfg.x;
+  let coverage = clamp(0.5 - d / voxMm, 0.0, 1.0);
+
   var t1 = 0.0;
-  if (d < 0.0) {
+  if (coverage > 0.0) {
+    // Sampled regardless of sign now: the ramp band sits OUTSIDE the surface,
+    // where the props texture filters toward zero — which reads as grey matter
+    // (wm = 0), and cortex is grey matter at the pial surface, so the ramp runs
+    // GM to background exactly as it should.
     let pr = textureSampleLevel(propTex, propSmp, sdfUvw(mat, half, params.cfg2.z), 0.0);
     let wm = smoothstep(0.15, 0.75, pr.r);
-    t1 = mix(0.45, 0.78, wm);
-    t1 = mix(t1, 0.52, pr.a);
-    t1 = mix(t1, 0.04, pr.b);
+    var tissue = mix(0.45, 0.78, wm);
+    tissue = mix(tissue, 0.52, pr.a);
+    tissue = mix(tissue, 0.04, pr.b);
+    t1 = tissue * coverage;
   }
   outT1[idx] = t1;
 

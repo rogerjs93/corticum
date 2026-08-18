@@ -78,3 +78,83 @@ against known ground truth, which this tool can supply and real data cannot.
 speed — add partial-volume, re-export, re-score, in under a minute per attempt.
 Full `recon-all` confirmation (~1 h here) is worth doing only once the cheap
 loop has stopped moving.
+
+
+---
+
+# Phase 2, first attempt: partial volume — a negative result
+
+Added the partial-volume ramp the experiment above pointed at, then re-ran the
+identical BET measurement. **It did not work**, and that is worth recording as
+carefully as a success would be.
+
+## The change
+
+`export_volume.wgsl` used `if (d < 0.0)` — a hard binary cutoff, giving the
+0.465-to-0.000 cliff. Replaced with coverage derived from the exact signed
+distance:
+
+```wgsl
+let voxMm = 2.0 * half / params.cfg.x;
+let coverage = clamp(0.5 - d / voxMm, 0.0, 1.0);
+t1 = tissue * coverage;
+```
+
+No invented parameter: a voxel of side `v` centred `d` from the boundary is
+covered by `clamp(0.5 - d/v, 0, 1)`. That is geometry, and it is available only
+because the anatomy is generated rather than measured.
+
+**The ramp is real and verified.** Mean intensity by distance from the surface:
+
+| sdf | mean T1 |
+|---|---|
+| −1.0 … −0.5 mm | 0.465 |
+| −0.5 … 0.0 mm | 0.354 |
+| 0.0 … +0.5 mm | 0.180 |
+| +0.5 … +1.0 mm | 0.000 |
+
+145,887 voxels now sit at intermediate intensity, where previously there were
+**zero**.
+
+## The result
+
+| | before | after |
+|---|---|---|
+| Dice | 0.8907 | **0.8903** |
+| background kept | 279,625 | 282,462 |
+| real tissue cut | 12,402 | 11,023 |
+| oversize | +22.2% | **+22.6%** |
+| error within 2 mm (sulci bridged) | 88% | **88%** |
+
+Nothing moved. Slightly worse, within noise.
+
+## Why the prediction was wrong — again
+
+Experiment 0 concluded "partial-volume ramp first, because it is what defeats
+the surface fit". **That inference was wrong.**
+
+BET's model is *brain inside skull*. It uses the bright-scalp / dark-skull
+signature to establish an OUTER BOUND for its deformable surface. There is no
+skull here at all, so nothing stops the surface expanding — and a 1 mm intensity
+ramp at the pial surface does not supply an outer bound. The error is 88%
+bridged sulci both before and after, which is the same failure unchanged.
+
+**The binding constraint is the missing skull, not the missing ramp.**
+
+## Corrected priority
+
+1. **Skull and scalp** — the actual blocker for anything skull-strip shaped.
+2. Rician noise.
+3. Bias field.
+4. ~~Partial volume~~ — done, and kept. It is still correct and still needed for
+   tissue segmentation and registration boundary accuracy, both of which model
+   partial volume explicitly. It simply does not fix BET, and claiming it did
+   would have been the easy thing to write.
+
+## The lesson worth keeping
+
+Two predictions in a row, both wrong, both cheap to falsify because the loop is
+8.5 s. The value of the loop is not speed for its own sake — it is that a wrong
+idea costs a minute instead of a week. Had this been queued on the remote box in
+a batch with the noise model and the bias field, all three would have shipped
+together and the credit would have gone to whichever was listed first.

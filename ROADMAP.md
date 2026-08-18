@@ -278,7 +278,14 @@ limitation on the research claim — and it gates all ENIGMA work, because
 recon-all's surface placement depends on the partial-volume gradient that the
 current image does not have.
 
-**Work** (scope set by Experiment 0's failure mode, not by this list)
+**Partial volume: DONE, and it did NOT fix skull-stripping.** Measured
+before/after with FSL bet: Dice 0.8907 → 0.8903, oversize +22.2% → +22.6%, error
+still 88% bridged sulci. BET needs an OUTER bound from the skull; a ramp at the
+pial surface is not one. Kept anyway — segmentation and registration both model
+partial volume explicitly — but **skull and scalp is the binding constraint**.
+Full write-up in `docs/experiment-0.md`.
+
+**Work** (scope set by measurement, not by this list)
 - Rician noise at controllable SNR.
 - Smooth multiplicative bias field.
 - Partial-volume mixing at tissue boundaries instead of hard class assignment.
