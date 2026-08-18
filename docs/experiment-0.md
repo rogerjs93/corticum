@@ -471,3 +471,65 @@ the remaining Phase 2 items (bias field) will not touch it.
 | MIXED voxels | 4.6 pt |
 | CSF fraction | 4.5 pt |
 | BET oversize | ~46 pt — anatomy, not acquisition |
+
+---
+
+# Variable CSF depth — FAST improves, BET worsens
+
+The skull is a smooth vault and the brain inside it is convoluted, so the space
+between them is thin over a gyral crown and thick over a sulcus or cistern. A
+fixed 2.5 mm shell cannot express that. Added a six-sample **enclosure** probe
+per voxel — the fraction of axis directions finding tissue within 6 mm — and
+made CSF depth `mix(1.5, 7.0, enclosure)`, with vault and scalp riding outward
+on top.
+
+## Result: a genuine trade-off
+
+| | before | after | real | gap |
+|---|---|---|---|---|
+| CSF fraction | 0.1871 | **0.1979** | 0.2318 | 4.5 → **3.4 pt** |
+| WM fraction | 0.3804 | **0.3696** | 0.3413 | 3.9 → **2.8 pt** |
+| GM fraction | 0.4325 | 0.4325 | 0.4270 | 0.6 → 0.6 pt |
+| MIXED voxels | 0.2734 | 0.2719 | 0.3196 | 4.6 → **4.8 pt** |
+| BET oversize | | | | 48.7 → **52.0 pt** |
+
+**The two tissue fractions it targeted both improved. BET's gap got worse.**
+
+Not spun as a win: the FAST metrics moved because there is genuinely more CSF
+inside the vault now, and BET's moved the other way because the extra CSF also
+changes where its surface settles. Both are real readings of the same change.
+
+## The honest problem with this change
+
+Unlike the ones before it, this one has **tuned numbers in it**: 1.5 mm, 7 mm,
+6 mm reach, 6 mm vault, 4 mm scalp. The partial-volume ramp came from voxel
+geometry, the supersampling from what a voxel *is*, the Rician model from what a
+magnitude image *is*. This is five constants chosen to look right.
+
+That is the difference between a model and a fit, and it is where this line of
+work should stop guessing. Every further tweak has two metrics moving in
+opposite directions and five knobs to move them with — which is a fitting
+exercise, not a modelling one.
+
+## Where Phase 2 actually stands
+
+| target | gap |
+|---|---|
+| FAST converges | ✅ pass |
+| GM fraction | 0.6 pt |
+| mean peak PVE | 1.8 pt |
+| WM fraction | 2.8 pt |
+| CSF fraction | 3.4 pt |
+| MIXED voxels | 4.8 pt |
+| BET oversize | 52 pt |
+
+Five of seven are within a few points of a real brain, from a starting position
+where FSL FAST could not process the image at all. The BET gap is the outlier
+and it has not responded to anything, which after four attempts is itself
+evidence: it is unlikely to be an acquisition property.
+
+**The principled next step is not another constant.** It is to widen the
+reference from one subject to the 40 already-processed AOMIC brains, so "is the
+synthetic close to this one brain?" becomes "is it inside the range real brains
+occupy?" — a 3.4-point CSF gap means nothing until the real spread is known, and
+it may already be inside it.

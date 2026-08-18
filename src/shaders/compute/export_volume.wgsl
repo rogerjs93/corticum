@@ -76,6 +76,38 @@ fn band(x: f32, lo: f32, hi: f32, soft: f32) -> f32 {
 }
 
 /**
+ * How enclosed is this point by brain tissue?
+ *
+ * The skull is a smooth vault; the brain inside it is convoluted. So the space
+ * between them is NOT a uniform shell — it is thin over a gyral crown and thick
+ * over a sulcus, a cistern or the skull base. A fixed 2.5 mm CSF band cannot
+ * express that, and the measurements said so: CSF fraction 4.5 points below a
+ * real brain, and bet's oversize gap stuck near 46 points across every other
+ * change. Both are the same missing anatomy.
+ *
+ * Returns the fraction of six axis directions that find tissue within `reach`.
+ * A point just outside a gyral crown is enclosed on one or two sides; a point
+ * in a sulcus or a basal cistern is surrounded. That number is a cheap stand-in
+ * for "am I inside the cranial vault", and it costs six samples per voxel
+ * rather than a morphological closing of the whole field.
+ */
+fn enclosure(matPt: vec3<f32>, half: f32, sdfDim: f32, sdfRange: f32, reach: f32) -> f32 {
+  var hits = 0.0;
+  for (var i = 0; i < 6; i = i + 1) {
+    var dir = vec3<f32>(0.0, 0.0, 0.0);
+    if (i == 0) { dir.x = 1.0; } else if (i == 1) { dir.x = -1.0; }
+    else if (i == 2) { dir.y = 1.0; } else if (i == 3) { dir.y = -1.0; }
+    else if (i == 4) { dir.z = 1.0; } else { dir.z = -1.0; }
+    let q = matPt + dir * reach;
+    let dq = decodeSdf(
+      textureSampleLevel(sdfTex, sdfSmp, sdfUvw(q, half, sdfDim), 0.0).r, sdfRange
+    );
+    if (dq < 0.0) { hits = hits + 1.0; }
+  }
+  return hits / 6.0;
+}
+
+/**
  * Intensity at ONE point in space: tissue, then the head shell outside it.
  *
  * Pulled out of main so it can be SUPERSAMPLED. A voxel is not a point — it is
@@ -90,7 +122,8 @@ fn band(x: f32, lo: f32, hi: f32, soft: f32) -> f32 {
  */
 fn intensityAt(
   ptWorld: vec3<f32>, matPt: vec3<f32>, half: f32, voxMm: f32,
-  sdfDim: f32, sdfRange: f32, opDim: f32, opActive: f32, propDim: f32
+  sdfDim: f32, sdfRange: f32, opDim: f32, opActive: f32, propDim: f32,
+  encl: f32
 ) -> f32 {
   let dB = decodeSdf(
     textureSampleLevel(sdfTex, sdfSmp, sdfUvw(matPt, half, sdfDim), 0.0).r, sdfRange
@@ -121,10 +154,18 @@ fn intensityAt(
 
   // Head shell, from the BASE distance: bone does not atrophy, so the vault
   // stays put while the brain shrinks inside it. That gap widening is the sign.
+  // CSF widens where the point is enclosed: 1.5 mm over an exposed gyral
+  // crown, up to 7 mm in a sulcus or cistern. The vault and scalp ride outward
+  // on top of it, which keeps the head smooth while the CSF space follows the
+  // folding — which is the actual anatomy.
+  let csfOut   = mix(1.5, 7.0, encl);
+  let skullOut = csfOut + 6.0;
+  let scalpOut = skullOut + 4.0;
+
   var shell = 0.0;
-  shell = shell + 0.05 * band(dB, 0.0, 2.5,  0.7);
-  shell = shell + 0.08 * band(dB, 2.5, 8.5,  0.7);
-  shell = shell + 0.80 * band(dB, 8.5, 12.5, 0.7);
+  shell = shell + 0.05 * band(dB, 0.0,      csfOut,   0.7);
+  shell = shell + 0.08 * band(dB, csfOut,   skullOut, 0.7);
+  shell = shell + 0.80 * band(dB, skullOut, scalpOut, 0.7);
 
   return v + shell * (1.0 - coverage);
 }
@@ -171,6 +212,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   // 2x2x2 supersample within the voxel. Eight offsets at the quarter points
   // average the tissue actually present in that volume, which is what makes an
   // interior grey/white boundary graded rather than a step.
+  // Once per voxel: the vault is smooth, so this does not need supersampling.
+  let encl = enclosure(mat, half, params.cfg.z, params.cfg.w, 6.0);
+
   var t1 = 0.0;
   let q = voxMm * 0.25;
   for (var sx = 0; sx < 2; sx = sx + 1) {
@@ -181,7 +225,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         );
         t1 = t1 + intensityAt(
           p + off, mat + off, half, voxMm,
-          params.cfg.z, params.cfg.w, params.cfg2.x, params.cfg2.y, params.cfg2.z
+          params.cfg.z, params.cfg.w, params.cfg2.x, params.cfg2.y, params.cfg2.z,
+          encl
         );
       }
     }
