@@ -13,3 +13,6 @@ tests/artifacts/
 # gzipped, and the site cannot render without them — a clone that has to
 # reproduce a FreeSurfer pipeline before it shows anything is not a portfolio
 # piece. The prep scripts stay in tools/prep/ so the derivation is auditable.
+
+# FreeSurfer licence — personal registration key, never publish
+.licence/
