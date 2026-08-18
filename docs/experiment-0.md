@@ -232,3 +232,56 @@ and none of the dura, cisterns or tentorium that a real vault contains.
 That is a concrete, falsifiable target for the next attempt, and it is the first
 one in this document that is measured against a reference rather than against
 an assumption.
+
+---
+
+# The realism gate, and its baseline
+
+`tools/realism/realism_gate.py` — runs the same tool at the same settings on the
+synthetic image and on a real T1, and reports the **delta**. It never reports a
+synthetic score on its own, because that is the mistake that cost three rounds
+above.
+
+## Baseline, 2026-08-18
+
+| f | synthetic Dice / oversize | real Dice / oversize | Δ oversize |
+|---|---|---|---|
+| 0.3 | 0.8809 / +22.5% | 0.4518 / +242.6% | −220.1 pt |
+| 0.4 | 0.8828 / +18.9% | 0.5077 / +192.9% | −174.0 pt |
+| 0.5 | 0.8830 / +16.1% | 0.6100 / +123.3% | −107.2 pt |
+| 0.6 | 0.8838 / +18.1% | 0.6744 / +85.9% | −67.8 pt |
+| 0.7 | 0.8328 / −0.5% | 0.6844 / +46.4% | **−46.9 pt** |
+
+**Closest agreement: 46.9 percentage points at f=0.7.** That is the number Phase
+2 reduces. A realistic image drives it toward zero.
+
+## A second signal, visible in the table
+
+Look at how each column responds to `f`. Across the sweep the REAL image's
+oversize collapses 242.6% → 46.4%, while the synthetic barely moves, 22.5% →
+−0.5%. BET's threshold has far more to grip on in a real head — dura, cisterns,
+the tentorium, the neck, noise — whereas the synthetic image is nearly
+threshold-insensitive because there is so little non-parenchyma inside the
+vault.
+
+**Sensitivity to a tool's own parameter is itself a realism signal**, and it
+points at the same missing anatomy the oversize gap does.
+
+## Caveat, stated rather than buried
+
+The two ground truths are not symmetric. The synthetic side is exact — the
+geometry is generated, so `sdf < 0` is the answer by construction. The real side
+is a FreeSurfer segmentation, which is an estimate with its own error. The delta
+is still the right quantity because each side is scored against the best truth
+available for it, but a change in the delta of a few points should not be read
+as meaningful.
+
+## Next
+
+- **Add FAST** to the harness. Tissue segmentation models partial volume
+  explicitly, so it is where the PV ramp should show a benefit — or fail to,
+  which is equally worth knowing.
+- **Widen the real reference beyond one subject.** 40 AOMIC subjects are already
+  recon-all'd; a distribution turns "is the synthetic close?" into "is the
+  synthetic inside the real range?".
+- Then cisterns and dura, which is what the gap actually points at.
