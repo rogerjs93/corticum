@@ -167,6 +167,92 @@ export const CASES: Case[] = [
     evidence: 'literature',
     cite: 'Fisher, lacunar syndromes; pure motor hemiparesis and the internal capsule. Perforator end-artery anatomy.',
   },
+  {
+    id: 'pure-sensory-01',
+    stem:
+      'A 69-year-old describes the whole of the right side — face, arm, trunk ' +
+      'and leg — as numb and not their own. Light touch, pinprick and ' +
+      'temperature are all reduced on that side, to much the same degree ' +
+      'throughout. Strength is FULL: the arm and leg lift against resistance ' +
+      'without difficulty. Language, attention and visual fields are normal.\n\n' +
+      'Weeks later, the numb side becomes persistently and unpleasantly ' +
+      'painful.\n\n' +
+      'This is a simulation, not a real patient.',
+    state: {
+      stroke: {
+        enabled: true,
+        site: 'thalamoperf',
+        side: 'left',
+        collateralGrade: 3,
+        hoursSinceOnset: 10,
+        recanalisationHour: Infinity,
+      },
+    },
+    allow: ['rotate', 'zoom', 'pick', 'slice', 'modality', 'xray'],
+    task: {
+      kind: 'pick-region',
+      prompt: 'Cut a plane, then click the infarcted structure.',
+      measure: 'infarct-territory',
+    },
+    because:
+      'Sensory loss over an entire half of the body — face, arm, trunk and leg ' +
+      'together — with completely preserved strength is a pure sensory ' +
+      'syndrome. Everything the body feels funnels through one small relay on ' +
+      'its way to cortex, so an infarct of a few millimetres there takes the ' +
+      'whole hemibody at once. A cortical lesion large enough to do that would ' +
+      'almost certainly disturb language or attention as well.\n\n' +
+      'Strength is spared because the descending motor fibres do not pass ' +
+      'through the relay — they run in the internal capsule just lateral to ' +
+      'it. That is the anatomical mirror of the pure motor case: the same ' +
+      'calibre of vessel, a few millimetres apart, opposite examination.\n\n' +
+      'The delayed, unpleasant pain in the numb side is characteristic of this ' +
+      'location.',
+    evidence: 'literature',
+    cite: 'Dejerine & Roussy, central post-stroke pain; Fisher, pure sensory stroke.',
+  },
+
+  {
+    id: 'locked-in-01',
+    stem:
+      'A 54-year-old collapses. They cannot move any limb, and cannot speak or ' +
+      'swallow. They are AWAKE and aware: they open and close the eyes to ' +
+      'command, and look up and down on request. Horizontal eye movement is ' +
+      'lost; vertical movement and blinking are preserved, and it is possible ' +
+      'to hold a conversation through them. Sensation appears intact.\n\n' +
+      'This is a simulation, not a real patient.',
+    state: {
+      stroke: {
+        enabled: true,
+        site: 'basilar',
+        side: 'left',
+        collateralGrade: 1,
+        hoursSinceOnset: 6,
+        recanalisationHour: Infinity,
+      },
+    },
+    allow: ['rotate', 'zoom', 'pick', 'slice', 'modality', 'xray'],
+    task: {
+      kind: 'pick-region',
+      prompt: 'Cut a plane, then click the infarcted structure.',
+      measure: 'infarct-territory',
+    },
+    because:
+      'Quadriparesis with speech and swallowing lost, while consciousness, ' +
+      'vertical gaze and blinking survive, is the locked-in syndrome. The ' +
+      'lesion sits ventrally in the brainstem, where the descending motor ' +
+      'fibres for both sides of the body run close together along with the ' +
+      'centres for horizontal gaze. Vertical gaze and the arousal system lie ' +
+      'higher and further back, which is why awareness is spared — and why ' +
+      'this patient is not unconscious despite a devastating deficit.\n\n' +
+      'This is also the one stroke in this set that is bilateral by ANATOMY ' +
+      'rather than by accident. Every other territory is paired left and ' +
+      'right, and a real infarct stops at the midline. Here the two vertebral ' +
+      'arteries fuse into a single midline vessel, so its small branches ' +
+      'supply both halves of the brainstem: one occlusion, both sides. Clicking ' +
+      'either side of the midline is correct here, and only here.',
+    evidence: 'literature',
+    cite: 'Plum & Posner, locked-in syndrome; ventral pontine anatomy and midline vertebrobasilar supply.',
+  },
 ];
 
 /**

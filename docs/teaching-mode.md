@@ -3,21 +3,38 @@
 Decided before any case exists, because the shell determines what a case can
 ask, and three cases written against the wrong shell is a rewrite.
 
-Status: **built and gated** — `pick-region`, four cases, cortical and deep. Phase 7 of
+Status: **built and gated** — `pick-region`, six cases, cortical and deep. Phase 7 of
 [`../ROADMAP.md`](../ROADMAP.md).
 
 ```
 #/case/mca-territory-01          M1 - neglect, gaze preference
 #/case/field-defect-01           PCA - homonymous field cut
 #/case/aphasia-no-weakness-01    M2 inferior - fluent aphasia, FULL strength
-#/case/lacune-01                 lenticulostriate - deep, needs a cut
+#/case/lacune-01                 lenticulostriate - PURE MOTOR, deep
+#/case/pure-sensory-01           thalamic relay   - PURE SENSORY, deep
+#/case/locked-in-01              midline brainstem - bilateral by anatomy
 await __corticum.verifyCases()   the leak gate
 ```
 
-The three are a set. One and three are the same artery at different calibres,
-separated only by whether strength is preserved; one and two are both left-sided
-inattention, separated only by whether the patient is aware of it. Each pair
-turns on a single examination finding, which is the point.
+The six are a set, built so that each pair turns on ONE examination finding:
+
+| Pair | Identical except |
+|---|---|
+| `mca-territory-01` / `aphasia-no-weakness-01` | same artery, different calibre — is strength preserved? |
+| `mca-territory-01` / `field-defect-01` | both left-sided inattention — is the patient AWARE of it? |
+| `lacune-01` / `pure-sensory-01` | both deep lacunes millimetres apart — motor or sensory? |
+
+That third pair is the sharpest, and the scorers enforce it in both directions:
+in the motor case the thalamus scores `none`, and in the sensory case the
+lentiform scores `none`. Deep, correct side, wrong supply. A scorer that waved
+through "any deep structure on the correct side" would teach the opposite of
+what both cases are for.
+
+`locked-in-01` earns its place differently: it is the only site with
+`bilateral: true`, and **no case exercised that branch until now**. Every other
+territory is paired left and right and a real infarct stops at the midline; the
+vertebrals fuse into one midline vessel, so here both sides score `full` —
+verified, and only here.
 
 **Cases 2 and 3 were added with ZERO code changes**, which is the schema doing
 its job: cases are content, and if adding one needs a code change the schema is
