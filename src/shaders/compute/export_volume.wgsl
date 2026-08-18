@@ -75,6 +75,60 @@ fn band(x: f32, lo: f32, hi: f32, soft: f32) -> f32 {
   return smoothstep(lo - soft, lo + soft, x) * (1.0 - smoothstep(hi - soft, hi + soft, x));
 }
 
+/**
+ * Intensity at ONE point in space: tissue, then the head shell outside it.
+ *
+ * Pulled out of main so it can be SUPERSAMPLED. A voxel is not a point — it is
+ * a volume, and its intensity is the average of tissue across that volume. That
+ * averaging IS partial volume, and sampling only the voxel centre is precisely
+ * what a real scanner does not do.
+ *
+ * Measured motivation: with noise and an outer-surface ramp in place, FAST found
+ * 19.3% of voxels "mixed" against 32.0% in a real brain. One voxel of ramp at
+ * the pial surface is not the same as graded boundaries everywhere; interior
+ * grey/white edges were still sharper than life. See docs/experiment-0.md.
+ */
+fn intensityAt(
+  ptWorld: vec3<f32>, matPt: vec3<f32>, half: f32, voxMm: f32,
+  sdfDim: f32, sdfRange: f32, opDim: f32, opActive: f32, propDim: f32
+) -> f32 {
+  let dB = decodeSdf(
+    textureSampleLevel(sdfTex, sdfSmp, sdfUvw(matPt, half, sdfDim), 0.0).r, sdfRange
+  );
+  var dd = dB;
+  if (opActive > 0.5) {
+    dd = dd + textureSampleLevel(offTex, offSmp, sdfUvw(matPt, half, opDim), 0.0).x;
+  }
+
+  // Analytic coverage from the exact distance. Kept alongside supersampling
+  // rather than replaced by it: the distance field knows the boundary position
+  // to far better precision than a handful of sub-samples could resolve.
+  let coverage = clamp(0.5 - dd / voxMm, 0.0, 1.0);
+
+  var v = 0.0;
+  if (coverage > 0.0) {
+    let pr = textureSampleLevel(propTex, propSmp, sdfUvw(matPt, half, propDim), 0.0);
+    // The render uses smoothstep(0.15, 0.75) to keep grey/white crisp on
+    // screen. That is a LOOK, and it does not belong in a synthetic scan: the
+    // props channel is already a continuous tissue membership, so using it
+    // directly is the physical reading and leaves the graded boundary intact.
+    let wm = clamp(pr.r, 0.0, 1.0);
+    var tissue = mix(0.45, 0.78, wm);
+    tissue = mix(tissue, 0.52, pr.a);
+    tissue = mix(tissue, 0.04, pr.b);
+    v = tissue * coverage;
+  }
+
+  // Head shell, from the BASE distance: bone does not atrophy, so the vault
+  // stays put while the brain shrinks inside it. That gap widening is the sign.
+  var shell = 0.0;
+  shell = shell + 0.05 * band(dB, 0.0, 2.5,  0.7);
+  shell = shell + 0.08 * band(dB, 2.5, 8.5,  0.7);
+  shell = shell + 0.80 * band(dB, 8.5, 12.5, 0.7);
+
+  return v + shell * (1.0 - coverage);
+}
+
 @compute @workgroup_size(4, 4, 4)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let n = u32(params.cfg.x);
@@ -112,74 +166,27 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   }
   outSdf[idx] = d;
 
-  // Synthetic T1: myelin bright, CSF dark, background zero. Same mapping the
-  // renderer's modality view uses, and equally NOT a pulse-sequence simulation.
-  //
-  // PARTIAL VOLUME. This used to be `if (d < 0.0)` — a hard binary cutoff, so a
-  // voxel was either full tissue or exactly zero and the boundary was a cliff
-  // from 0.465 to 0.000. Measured consequence: FSL bet's deformable surface had
-  // no gradient to settle on, relaxed into a smooth envelope, and returned a
-  // brain-shaped mask 22% TOO LARGE at Dice 0.8907 — a number that reads as
-  // fine. See docs/experiment-0.md.
-  //
-  // The fix needs no invented parameter. `d` is an exact signed distance in mm,
-  // so the fraction of a voxel lying inside the surface is a geometric fact:
-  // a voxel of side v centred d from the boundary is covered by
-  // clamp(0.5 - d/v, 0, 1). At d = -v/2 it is full, at d = +v/2 empty, at the
-  // surface exactly half. That is a real partial-volume ramp one voxel wide,
-  // derived rather than tuned — and it is available here precisely because the
-  // geometry is generated rather than measured.
   let voxMm = 2.0 * half / params.cfg.x;
-  let coverage = clamp(0.5 - d / voxMm, 0.0, 1.0);
 
+  // 2x2x2 supersample within the voxel. Eight offsets at the quarter points
+  // average the tissue actually present in that volume, which is what makes an
+  // interior grey/white boundary graded rather than a step.
   var t1 = 0.0;
-  if (coverage > 0.0) {
-    // Sampled regardless of sign now: the ramp band sits OUTSIDE the surface,
-    // where the props texture filters toward zero — which reads as grey matter
-    // (wm = 0), and cortex is grey matter at the pial surface, so the ramp runs
-    // GM to background exactly as it should.
-    let pr = textureSampleLevel(propTex, propSmp, sdfUvw(mat, half, params.cfg2.z), 0.0);
-    let wm = smoothstep(0.15, 0.75, pr.r);
-    var tissue = mix(0.45, 0.78, wm);
-    tissue = mix(tissue, 0.52, pr.a);
-    tissue = mix(tissue, 0.04, pr.b);
-    t1 = tissue * coverage;
+  let q = voxMm * 0.25;
+  for (var sx = 0; sx < 2; sx = sx + 1) {
+    for (var sy = 0; sy < 2; sy = sy + 1) {
+      for (var sz = 0; sz < 2; sz = sz + 1) {
+        let off = vec3<f32>(
+          select(-q, q, sx == 1), select(-q, q, sy == 1), select(-q, q, sz == 1)
+        );
+        t1 = t1 + intensityAt(
+          p + off, mat + off, half, voxMm,
+          params.cfg.z, params.cfg.w, params.cfg2.x, params.cfg2.y, params.cfg2.z
+        );
+      }
+    }
   }
-
-  // ---- skull and scalp ------------------------------------------------------
-  //
-  // WHY, measured: FSL bet returned a mask 22% too large on this image, and
-  // adding a partial-volume ramp changed nothing (0.8907 -> 0.8903). bet's
-  // model is BRAIN INSIDE SKULL — it uses the bright-scalp / dark-skull
-  // signature to bound its deformable surface from OUTSIDE. With no skull
-  // there is no bound, so the surface relaxes over the sulci. See
-  // docs/experiment-0.md.
-  //
-  // Built from `dBase`, NOT from `d`. Bone does not atrophy: the vault stays
-  // put while the brain shrinks inside it, which is exactly why atrophy shows
-  // up as a widening subarachnoid gap. Driving the skull from the composed
-  // distance would shrink the head along with the brain and erase the sign.
-  //
-  // Radii are `plausible-approximation`: a uniform shell offset from the
-  // parenchyma. Real vault thickness varies, the posterior fossa and skull base
-  // are nothing like this, and there are no sinuses, no diploe layering and no
-  // foramen magnum. It exists to give a skull-stripper something to strip.
-  //
-  // Everything must fit inside the shipped SDF clip of 16 mm, beyond which the
-  // distance saturates and no shell can be placed.
-  let csfOut   = 2.5;   // subarachnoid space
-  let skullOut = 8.5;   // vault
-  let scalpOut = 12.5;  // skin and subcutaneous fat
-  let soft     = 0.7;   // ramp width, so this does not introduce a new cliff
-
-  var shell = 0.0;
-  shell = shell + 0.05 * band(dBase, 0.0,      csfOut,   soft); // CSF, dark
-  shell = shell + 0.08 * band(dBase, csfOut,   skullOut, soft); // bone, darker
-  shell = shell + 0.80 * band(dBase, skullOut, scalpOut, soft); // fat, BRIGHT
-
-  // Brain wins where there is brain; the shell fills in outside it. Blending by
-  // coverage keeps the pial ramp intact rather than stamping over it.
-  t1 = t1 + shell * (1.0 - coverage);
+  t1 = t1 * 0.125;
 
   // ---- Rician noise ---------------------------------------------------------
   //

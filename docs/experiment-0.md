@@ -412,3 +412,62 @@ anything BET produced.
 
 Three quantified gaps, all measured against a real brain rather than an
 assumption. The next change either moves them or it does not.
+
+---
+
+# Interior partial volume — supersampling, and every gap narrows
+
+The MIXED gap said the outer-surface ramp was real but insufficient: 19.3%
+against 32.0% real. The fix is not a tuning knob on the grey/white curve — it is
+that **a voxel is a volume, not a point.** Its intensity is the average of tissue
+across it, and that averaging *is* partial volume. Sampling only the voxel centre
+is precisely what a scanner does not do.
+
+## Two changes, both principled rather than tuned
+
+**2×2×2 supersampling.** The intensity computation moved into `intensityAt()`
+and is evaluated at eight quarter-points inside each voxel, then averaged.
+Analytic SDF coverage is kept alongside it rather than replaced — the distance
+field locates the boundary far more precisely than eight samples could.
+
+**Dropped `smoothstep(0.15, 0.75)` on the grey/white membership.** That curve
+exists to keep the *render* crisp on screen; it is a look, and it does not belong
+in a synthetic scan. The props channel is already a continuous tissue membership,
+so using it directly is the physical reading and leaves the graded boundary
+intact.
+
+## Result
+
+| | before | after | real | gap |
+|---|---|---|---|---|
+| MIXED voxels | 0.1932 | **0.2734** | 0.3196 | 12.6 → **4.6 pt** |
+| GM fraction | 0.4026 | **0.4325** | 0.4270 | −2.4 → **+0.6 pt** |
+| WM fraction | 0.4253 | **0.3804** | 0.3413 | +8.4 → **+3.9 pt** |
+| CSF fraction | 0.1722 | **0.1871** | 0.2318 | −6.0 → **−4.5 pt** |
+| mean peak PVE | 0.9413 | **0.9114** | 0.8936 | +4.8 → **+1.8 pt** |
+
+**Every gap narrowed, and GM fraction essentially closed** — 0.4325 against
+0.4270, six tenths of a point. The white-matter excess more than halved.
+
+Cost: none measurable. Export stayed at ~21 s despite 8× the texture sampling,
+because the pass was bandwidth-bound on readback rather than on sampling.
+
+## What is left, honestly
+
+CSF is still 4.5 points low and BET's oversize gap barely moved. Both point the
+same way, and it is the same thing the very first BET result pointed at: this
+head has a thin uniform 2.5 mm CSF shell where a real one has cisterns, sulcal
+CSF of varying depth, dura and a tentorium. That is anatomy, not acquisition —
+the remaining Phase 2 items (bias field) will not touch it.
+
+## Scorecard
+
+| target | status |
+|---|---|
+| FAST converges | ✅ |
+| GM fraction | ✅ 0.6 pt |
+| mean peak PVE | 1.8 pt |
+| WM fraction | 3.9 pt |
+| MIXED voxels | 4.6 pt |
+| CSF fraction | 4.5 pt |
+| BET oversize | ~46 pt — anatomy, not acquisition |
