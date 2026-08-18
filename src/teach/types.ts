@@ -54,6 +54,8 @@ export interface Scored {
 
 export interface Case {
   id: string;
+  /** Short label for the library listing. Must not name the answer either. */
+  title: string;
   /** Clinical vignette. Prose only — never names the answer. */
   stem: string;
   /** The parameters that produce this brain. Reuses the renderer's own type. */

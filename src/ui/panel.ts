@@ -1129,8 +1129,17 @@ export function createPanel(brain: BrainScene, regions: RegionMeta[]): HTMLEleme
     if (e.key === 'h' || e.key === 'H') setHidden(!root.classList.contains('cx-hidden'));
   });
 
+  // Entry to teaching mode. Deliberately a LINK and not a tenth section: cases
+  // are a different mode, not another parameter, and putting them in the panel
+  // is exactly the clutter the mode split exists to avoid.
+  const teachLink = el('a', 'cx-teach');
+  teachLink.href = '#/teach';
+  teachLink.textContent = 'Teaching cases →';
+  teachLink.title = 'Guided cases — the panel is hidden so it cannot give the answer away';
+
   root.append(
     hideBtn,
+    teachLink,
     evidenceKey,
     makeGroup('Subject'),
     secSubject.root,

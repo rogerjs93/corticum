@@ -14,7 +14,7 @@ import { braakInfo } from './disease/braak';
 import { TERRITORY, territoryOf } from './disease/territories';
 import { createPanel } from './ui/panel';
 import { findCase } from './teach/cases';
-import { mountCase } from './teach/mode';
+import { mountCase, mountLibrary } from './teach/mode';
 import { auditCases, territorySanity } from './teach/leakGate';
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
@@ -194,7 +194,9 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
     : null;
   const theCase = caseId ? findCase(caseId) : undefined;
 
-  if (theCase) {
+  if (location.hash.split('?')[0] === '#/teach') {
+    document.body.append(mountLibrary());
+  } else if (theCase) {
     await applyDisease(theCase.state);
     const handle = mountCase(brain, theCase);
     document.body.append(handle.root);
@@ -1894,7 +1896,8 @@ window.addEventListener('hashchange', () => {
   const changed = route !== lastRoute;
   // Entering a case, leaving one, or moving between two: all three need the
   // shell rebuilt, and all three involve a case route on one side or the other.
-  const involvesCase = route.startsWith('#/case/') || lastRoute.startsWith('#/case/');
+  const isMode = (r: string) => r.startsWith('#/case/') || r === '#/teach';
+  const involvesCase = isMode(route) || isMode(lastRoute);
   lastRoute = route;
   if (changed && involvesCase) location.reload();
 });

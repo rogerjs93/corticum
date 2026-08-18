@@ -15,6 +15,7 @@ import type { Case } from './types';
 export const CASES: Case[] = [
   {
     id: 'mca-territory-01',
+    title: 'Weakness and inattention down one side',
     stem:
       'A 72-year-old is brought in after sudden weakness down the left side, ' +
       'with dense inattention to the left. The gaze is driven to the right. ' +
@@ -51,6 +52,7 @@ export const CASES: Case[] = [
 
   {
     id: 'field-defect-01',
+    title: 'Bumping into things on one side',
     stem:
       'A 71-year-old keeps catching the left side of door frames, and leaves ' +
       'food untouched on the left of the plate. Strength is normal in all four ' +
@@ -89,6 +91,7 @@ export const CASES: Case[] = [
 
   {
     id: 'aphasia-no-weakness-01',
+    title: 'Fluent nonsense, full strength',
     stem:
       'A 58-year-old, right-handed, begins speaking in fluent but nonsensical ' +
       'sentences, using wrong and invented words. They cannot follow a simple ' +
@@ -125,6 +128,7 @@ export const CASES: Case[] = [
   },
   {
     id: 'lacune-01',
+    title: 'Face, arm and leg equally weak',
     stem:
       'A 64-year-old with many years of poorly controlled blood pressure wakes ' +
       'with weakness of the face, arm and leg on the right, all affected to ' +
@@ -169,6 +173,7 @@ export const CASES: Case[] = [
   },
   {
     id: 'pure-sensory-01',
+    title: 'One half of the body numb',
     stem:
       'A 69-year-old describes the whole of the right side — face, arm, trunk ' +
       'and leg — as numb and not their own. Light touch, pinprick and ' +
@@ -213,6 +218,7 @@ export const CASES: Case[] = [
 
   {
     id: 'locked-in-01',
+    title: 'Awake, aware, unable to move',
     stem:
       'A 54-year-old collapses. They cannot move any limb, and cannot speak or ' +
       'swallow. They are AWAKE and aware: they open and close the eyes to ' +

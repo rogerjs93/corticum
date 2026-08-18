@@ -1,6 +1,7 @@
 import type { BrainScene } from '../scene/brainScene';
 import { OCCLUSION_SITES } from '../disease/territories';
 import { scorePickRegion } from './score';
+import { CASES } from './cases';
 import type { Affordance, Case, Scored } from './types';
 
 /**
@@ -146,6 +147,51 @@ export interface TeachHandle {
   submitPick: (worldX: number, region: Parameters<typeof scorePickRegion>[1]) => Scored;
 }
 
+
+/**
+ * The case library at `#/teach`.
+ *
+ * Teaching is a separate MODE rather than a tenth panel section, so the
+ * parameter panel — which is the answer key — is never on screen during a case.
+ * The cost of that separation is discoverability: for a while cases existed but
+ * nothing linked to them and nothing led back, which is its own kind of broken.
+ *
+ * Titles describe the PRESENTATION, never the lesion. A library that lists
+ * "Left MCA occlusion" answers three of its own cases from the index page.
+ */
+export function mountLibrary(): HTMLElement {
+  const root = el('div', 'tm-root tm-library');
+  root.append(el('div', 'tm-prompt', 'Teaching cases'));
+  root.append(
+    el(
+      'div',
+      'tm-stem',
+      'Each case shows a brain with a simulated lesion and asks you to find it ' +
+        'by clicking. The controls you get are chosen per case — some are ' +
+        'withheld because they would give the answer away.'
+    )
+  );
+
+  const list = el('div', 'tm-list');
+  for (const c of CASES) {
+    const a = el('a', 'tm-caselink');
+    a.href = `#/case/${c.id}`;
+    a.append(el('span', 'tm-casetitle', c.title));
+    // NO depth tag here. The first version marked cases "cut required" vs
+    // "surface", which was both wrong (every case grants `slice`, so all six
+    // read the same) and a LEAK: cortical-versus-deep is precisely the
+    // discrimination the lacunar and pure-sensory cases exist to teach, and
+    // labelling it in the index answers them from the menu.
+    list.append(a);
+  }
+  root.append(list);
+
+  const back = el('a', 'tm-back', '← back to the full tool');
+  back.href = '#/';
+  root.append(back);
+  return root;
+}
+
 export function mountCase(brain: BrainScene, c: Case): TeachHandle {
   const root = el('div', 'tm-root');
 
@@ -159,8 +205,26 @@ export function mountCase(brain: BrainScene, c: Case): TeachHandle {
   const reveal = el('div', 'tm-reveal');
   reveal.hidden = true;
 
+  // A case with no exit is a trap. `#/teach` lists them; `#/` is the full tool.
+  const nav = el('div', 'tm-nav');
+  const toLibrary = el('a', 'tm-back', '← all cases');
+  toLibrary.href = '#/teach';
+  nav.append(toLibrary);
+
+  const idx = CASES.findIndex((x) => x.id === c.id);
+  const next = CASES[idx + 1];
+  const nextLink = el('a', 'tm-next');
+  if (next) {
+    nextLink.href = `#/case/${next.id}`;
+    nextLink.textContent = 'next case →';
+  }
+  // Only offered AFTER answering: a visible "next" before committing is an
+  // invitation to skip the thinking, which is the whole exercise.
+  nextLink.hidden = true;
+  nav.append(nextLink);
+
   const controls = buildControls(brain, c.allow);
-  root.append(stem, prompt, ...(controls ? [controls] : []), feedback, reveal);
+  root.append(nav, stem, prompt, ...(controls ? [controls] : []), feedback, reveal);
 
   let answered = false;
 
@@ -185,6 +249,7 @@ export function mountCase(brain: BrainScene, c: Case): TeachHandle {
 
     reveal.append(head, what, truthLine, why, tag);
     reveal.hidden = false;
+    if (next) nextLink.hidden = false;
   };
 
   const submitPick: TeachHandle['submitPick'] = (worldX, region) => {

@@ -7,6 +7,7 @@ Status: **built and gated** — `pick-region`, six cases, cortical and deep. Pha
 [`../ROADMAP.md`](../ROADMAP.md).
 
 ```
+#/teach                          the case library
 #/case/mca-territory-01          M1 - neglect, gaze preference
 #/case/field-defect-01           PCA - homonymous field cut
 #/case/aphasia-no-weakness-01    M2 inferior - fluent aphasia, FULL strength
@@ -57,6 +58,28 @@ author to delete the clinical detail that makes a case worth doing.
 already-loaded page silently did nothing, because the shell is chosen at boot.
 Entering, leaving or switching cases now rebuilds — the panel especially must
 not survive into a case.
+
+## 0. Separate, but reachable
+
+Teaching is a mode, so the parameter panel — the answer key — is never on screen
+during a case. The cost of that separation is discoverability, and for a while
+it was total: cases existed, nothing linked to them, and nothing led back out.
+
+- **In**: one LINK at the top of the panel, deliberately not a tenth section.
+  Cases are a different mode, not another parameter, and putting them in the
+  panel is exactly the clutter the mode split exists to avoid. The panel still
+  has 9 sections in 5 groups, unchanged.
+- **Library**: `#/teach` lists the cases by PRESENTATION and links back to the
+  full tool.
+- **Out**: every case has "← all cases", and "next case →" appears only AFTER
+  the learner commits — a visible next button beforehand is an invitation to
+  skip the thinking, which is the exercise.
+
+**The library nearly leaked.** The first version tagged each case "cut required"
+or "surface". It was wrong (every case grants `slice`, so all six read the same)
+and worse, a correct version would have been a leak: cortical-versus-deep is
+precisely the discrimination the lacunar and pure-sensory cases exist to teach,
+and labelling it in the index answers them from the menu. No depth tag ships.
 
 ## 1. It is a MODE, not a section
 
