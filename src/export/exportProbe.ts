@@ -66,6 +66,7 @@ export class ExportProbe {
     this.params = new UniformBuffer(engine, undefined, undefined, 'exportParams');
     this.params.addUniform('cfg', 4);
     this.params.addUniform('cfg2', 4);
+    this.params.addUniform('cfg3', 4);
 
     this.cs = new ComputeShader(
       'exportVolume',
@@ -140,6 +141,17 @@ export class ExportProbe {
        * possible failure here.
        */
       mni?: boolean;
+      /**
+       * Rician noise standard deviation, in the same 0..1 units as the
+       * synthetic intensities (WM sits at 0.78). 0 disables it.
+       *
+       * Not cosmetic: FSL FAST cannot fit a mixture to this image without it,
+       * because half the voxels sit on two exact intensities and a Gaussian
+       * fitted to a delta spike has zero variance. See docs/experiment-0.md.
+       */
+      noiseSigma?: number;
+      /** Seed for the noise. Fixed by default so exports stay reproducible. */
+      noiseSeed?: number;
     } = {}
   ): Promise<ExportResult> {
     const m = this.field.manifest;
@@ -154,6 +166,9 @@ export class ExportProbe {
       this.derived.propDim,
       m.grid.dim
     );
+    const noiseSigma = opts.noiseSigma ?? 0;
+    const noiseSeed = opts.noiseSeed ?? 1;
+    this.params.updateFloat4('cfg3', noiseSigma, noiseSeed, 0, 0);
     this.params.update();
 
     const g = Math.ceil(dim / 4);
@@ -278,6 +293,9 @@ export class ExportProbe {
       exportedAt: new Date().toISOString(),
       subject: m.subject,
       grid: { dim, voxelMm, halfExtentMm: half, originMm: origin, space },
+      // Part of the parameter set, so two exports differing only in noise get
+      // different digests and the sidecar says why.
+      acquisition: { noiseModel: noiseSigma > 0 ? 'rician' : 'none', noiseSigma, noiseSeed },
       // Which space this is decides whether the coordinates mean anything
       // standard. Recorded from what was actually written, not from what
       // was requested — an MNI export that silently fell back to subject

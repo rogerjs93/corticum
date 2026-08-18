@@ -21,6 +21,8 @@ struct ExParams {
   cfg: vec4<f32>,
   // x = op dim, y = op active, z = prop dim, w = label dim
   cfg2: vec4<f32>,
+  // x = noise sigma (0 = off), y = seed, z/w reserved
+  cfg3: vec4<f32>,
 };
 
 @group(0) @binding(0) var sdfSmp: sampler;
@@ -37,6 +39,34 @@ struct ExParams {
 @group(0) @binding(11) var<storage, read_write> outT1: array<f32>;
 @group(0) @binding(12) var<storage, read_write> outDisp: array<f32>;
 @group(0) @binding(13) var<uniform> params: ExParams;
+
+// Deterministic per-voxel hash. Phase 0's gate requires that the same spec
+// exported twice produces identical SHA-256 digests, so the noise cannot come
+// from a clock or a frame counter — it has to be a pure function of position
+// and seed. Same reasoning as the seeded lesion engine: reproducible or useless.
+fn hash3(v: vec3<u32>, seed: u32) -> u32 {
+  var h = v.x * 0x8da6b343u + v.y * 0xd8163841u + v.z * 0xcb1ab31fu + seed * 0x165667b1u;
+  h = h ^ (h >> 15u);
+  h = h * 0x2c1b3c6du;
+  h = h ^ (h >> 12u);
+  h = h * 0x297a2d39u;
+  h = h ^ (h >> 15u);
+  return h;
+}
+
+fn unitFloat(h: u32) -> f32 {
+  // Open interval: log(0) in Box-Muller is not recoverable.
+  return (f32(h & 0x00ffffffu) + 0.5) / 16777216.0;
+}
+
+// Box-Muller: two independent standard normals from two uniforms.
+fn gauss2(v: vec3<u32>, seed: u32) -> vec2<f32> {
+  let u1 = unitFloat(hash3(v, seed));
+  let u2 = unitFloat(hash3(v, seed + 0x9e3779b9u));
+  let r = sqrt(-2.0 * log(u1));
+  let a = 6.2831853 * u2;
+  return vec2<f32>(r * cos(a), r * sin(a));
+}
 
 // Soft-edged band: 1 inside [lo, hi], ramping over `soft` at each edge. Used to
 // stack head layers without reintroducing the hard boundary that started all
@@ -150,6 +180,30 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   // Brain wins where there is brain; the shell fills in outside it. Blending by
   // coverage keeps the pial ramp intact rather than stamping over it.
   t1 = t1 + shell * (1.0 - coverage);
+
+  // ---- Rician noise ---------------------------------------------------------
+  //
+  // WHY, measured: FSL FAST converges on a real T1 and COLLAPSES on this image
+  // — `MeaNsK variance nan`, all three tissue classes fused into one. Cause,
+  // after two wrong guesses: the top two intensities hold 49.9% of brain voxels
+  // here against 13.0% in a real brain. Half the image sits on two exact values,
+  // and a Gaussian fitted to a delta spike drives its variance to zero.
+  //
+  // Noise is therefore not decoration. It is what turns two spikes into two
+  // distributions and makes the image fittable at all. See docs/experiment-0.md.
+  //
+  // RICIAN, not Gaussian: an MR magnitude image is the modulus of a complex
+  // signal with Gaussian noise in each channel, so noise adds in quadrature.
+  // The practical consequence is that background is NOT zero — it is
+  // Rayleigh-distributed with a positive mean — which is also why real
+  // skull-strippers expect signal outside the head and this image had none.
+  let sigma = params.cfg3.x;
+  if (sigma > 0.0) {
+    let g = gauss2(gid, u32(params.cfg3.y));
+    let re = t1 + g.x * sigma;
+    let im = g.y * sigma;
+    t1 = sqrt(re * re + im * im);
+  }
 
   outT1[idx] = t1;
 

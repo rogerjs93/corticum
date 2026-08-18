@@ -1239,12 +1239,17 @@ async function bootBrain(engineIn?: WebGPUEngine, override?: FieldOverride): Pro
      * download prompt is the wrong shape for something you do twenty times.
      * Requires the dev server (the sink is middleware).
      */
-    async exportToDisk(gridDim = 208): Promise<Record<string, unknown>> {
+    async exportToDisk(
+      gridDim = 208,
+      opts: { noiseSigma?: number; noiseSeed?: number } = {}
+    ): Promise<Record<string, unknown>> {
       exportProbe ??= new ExportProbe(engine, () => scene.render(), field, operators, derived);
       const r = await exportProbe.run(gridDim, {
         download: false,
         keep: true,
         provenance: liveProvenance(),
+        noiseSigma: opts.noiseSigma,
+        noiseSeed: opts.noiseSeed,
       });
       const written: Array<Record<string, unknown>> = [];
       for (const f of r.buffers ?? []) {

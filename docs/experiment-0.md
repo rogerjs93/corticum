@@ -342,3 +342,73 @@ the blocker. Noise was, and it took a tool that fails loudly to show it.
 A collapsed fit is now recorded as a **result**, not an abort. A tool declining
 to run is a measurement, and the harness that hides it is worse than no harness
 — which the first version demonstrated by reporting the collapse as clean data.
+
+---
+
+# Rician noise — the first unambiguous pass
+
+Added deterministic Rician noise to the export, σ = 0.02 in the 0..1 intensity
+units where white matter sits at 0.78, i.e. **SNR ≈ 39** in WM — inside the
+20–100 range a real T1 occupies.
+
+Deterministic on purpose: a per-voxel hash of position and seed, never a clock,
+because Phase 0's gate requires that the same spec exported twice produces
+identical SHA-256 digests. Rician rather than Gaussian because an MR magnitude
+image is the modulus of a complex signal with noise in each channel, so it adds
+in quadrature.
+
+## The binary target: FAST must converge
+
+| | before | after |
+|---|---|---|
+| FAST 3-class fit, synthetic | **collapsed** | **CONVERGED** |
+| top-2 intensities hold | 49.9% | **1.0%** (real: 13.0%) |
+| background | exactly 0.000 | 0.0376 mean, Rayleigh |
+
+Half the image no longer sits on two exact values, the mixture has variance to
+fit, and FAST segments it. **This is the first unambiguous pass in the whole
+sequence** — not a score that needed interpreting, a tool that could not run and
+now runs.
+
+The background is a free consequence worth noting: Rician noise on zero signal
+is Rayleigh-distributed with a positive mean, so air is no longer exactly zero.
+Real skull-strippers expect signal outside the head, and this image had none.
+
+## Now the full comparison, which is the point of the harness
+
+| | synthetic | real | delta |
+|---|---|---|---|
+| CSF fraction | 0.1722 | 0.2318 | −0.060 |
+| GM fraction | 0.4026 | 0.4270 | −0.024 |
+| WM fraction | 0.4253 | 0.3413 | **+0.084** |
+| MIXED voxels | 0.1932 | 0.3196 | **−0.126** |
+| mean peak PVE | 0.9413 | 0.8936 | +0.048 |
+| BET oversize gap | | | 45.9 pt (was 46.9) |
+
+Two honest readings:
+
+**GM/WM balance is off by ~8 points.** The synthetic image is white-matter
+heavy relative to a real brain. That is a property of the tissue-class mapping,
+not of the noise.
+
+**MIXED is 19% against 32% real.** The partial-volume ramp put real mixed
+voxels into the image — there were essentially none before — but a real brain
+has *two thirds again* as many. One voxel of ramp at the outer surface is not
+the same as graded boundaries throughout, and interior GM/WM boundaries are
+still sharper than life.
+
+So the PV ramp finally has a measurement that can see it, and that measurement
+says it is real but insufficient. That is a far more useful verdict than
+anything BET produced.
+
+## Where the numbers stand
+
+| target | value |
+|---|---|
+| FAST converges | ✅ pass |
+| BET oversize gap | 45.9 pt (from 46.9) |
+| MIXED gap | 12.6 pt |
+| WM fraction gap | 8.4 pt |
+
+Three quantified gaps, all measured against a real brain rather than an
+assumption. The next change either moves them or it does not.
