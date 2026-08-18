@@ -137,6 +137,15 @@ def main() -> None:
     ap.add_argument("--sdf", required=True, type=Path, help="exported SDF; sdf<0 is parenchyma")
     ap.add_argument("--real", required=True, type=Path)
     ap.add_argument("--real-parenchyma", required=True, type=Path)
+    ap.add_argument(
+        "--reference",
+        type=Path,
+        help=(
+            "reference.json from build_reference.py. With it the gate reports "
+            "whether the synthetic sits INSIDE the spread of real brains, which "
+            "is the question a single reference subject cannot answer."
+        ),
+    )
     ap.add_argument("--out", type=Path, default=Path("realism_report.json"))
     args = ap.parse_args()
 
@@ -212,6 +221,33 @@ def main() -> None:
     print("  A hard tissue-class image has almost none; a real image has many, because")
     print("  real tissue boundaries are graded. This is the number the partial-volume")
     print("  ramp should move, and the one the bet metrics could never see.")
+
+    # ---- against a distribution, if one was supplied ------------------------
+    if args.reference and args.reference.exists():
+        ref = json.loads(args.reference.read_text(encoding="utf-8"))
+        rf = ref.get("fast", {})
+        n = ref.get("n_fast_converged", 0)
+        print(f"\n=== against {n} real brains, not one ===")
+        if n < 2:
+            print("  reference has fewer than 2 converged subjects — no spread to compare")
+        else:
+            print(f"  {'':20}{'synthetic':>11}{'real mean':>11}{'real SD':>9}{'z':>8}  verdict")
+            for key in ("csf_frac", "gm_frac", "wm_frac", "mixed_frac", "mean_peak_pve"):
+                st = rf.get(key)
+                if not st or st.get("sd") in (None, 0):
+                    continue
+                z = (fs[key] - st["mean"]) / st["sd"]
+                inside = st["min"] <= fs[key] <= st["max"]
+                fast_rows.setdefault(key, {})["z"] = round(z, 2)
+                fast_rows[key]["inside_real_range"] = inside
+                verdict = "INSIDE real range" if inside else "outside"
+                print(
+                    f"  {key:<20}{fs[key]:>11.4f}{st['mean']:>11.4f}"
+                    f"{st['sd']:>9.4f}{z:>+8.2f}  {verdict}"
+                )
+            print("\n  A gap only means something next to the spread it sits in.")
+            print("  A 3-point difference is large if real brains vary by 1 point")
+            print("  and negligible if they vary by 10.")
 
     args.out.write_text(
         json.dumps(

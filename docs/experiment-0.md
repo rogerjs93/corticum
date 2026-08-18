@@ -533,3 +533,52 @@ reference from one subject to the 40 already-processed AOMIC brains, so "is the
 synthetic close to this one brain?" becomes "is it inside the range real brains
 occupy?" — a 3.4-point CSF gap means nothing until the real spread is known, and
 it may already be inside it.
+
+---
+
+# Widening the reference from one brain to many
+
+Every number above compares the synthetic image against **one** real brain
+(`sample`). That cannot answer the question it appears to answer. A 3.4-point
+CSF gap is large if real brains vary by one point and negligible if they vary by
+ten, and one subject cannot tell you which.
+
+## Split by where the compute has to happen
+
+**`tools/realism/build_reference.py`** runs BET across an f-sweep plus FAST on
+every subject in a FreeSurfer `SUBJECTS_DIR`, and emits per-metric distributions
+— n, mean, SD, min, max. That is 40 × (bet + fast), hours of compute, and it
+belongs where the recon-all output already lives. **The images never move; a few
+kilobytes of JSON comes back.**
+
+**`realism_gate.py --reference reference.json`** then reports a z-score and an
+`INSIDE real range` / `outside` verdict per metric, instead of a delta against a
+single brain.
+
+## Blocked, and on what
+
+The 40 AOMIC subjects are not on this workstation — there is no local copy and
+no SSH configuration here. Locally there are three FreeSurfer subjects, and two
+of them (`fsaverage`, `fsaverage_sym`) are **templates, not people**. Averaging
+smooths gyri away, so including them would not widen the reference, it would
+corrupt it: the spread would describe an artefact rather than human variation.
+
+So the builder is written and syntax-checked but has not been run against a real
+cohort. On Horizon:
+
+```
+python tools/realism/build_reference.py --subjects-dir <SUBJECTS_DIR> --out reference.json
+```
+
+then bring `reference.json` back and re-run the gate with `--reference`.
+
+One portability note found while testing: the FSL container ships **Python 2**,
+so the builder needs `python3` there. On Horizon, which already runs the ENIGMA
+stack, the system Python is fine.
+
+## Why this matters more than another acquisition tweak
+
+Five of seven metrics are within a few points of one real brain. Whether that is
+excellent or mediocre is **currently unknowable**, and no further change to the
+image can make it knowable. The reference is the missing measurement, not the
+model.
