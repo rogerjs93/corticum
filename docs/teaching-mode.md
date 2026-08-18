@@ -19,7 +19,7 @@ Status: **built and gated** — `pick-region`, eight cases, cortical and deep. P
 await __corticum.verifyCases()   the leak gate
 ```
 
-The six are a set, built so that each pair turns on ONE examination finding:
+The eight are a set, built so that each pair turns on ONE examination finding:
 
 | Pair | Identical except |
 |---|---|
@@ -34,7 +34,7 @@ cerebellar pathways cross twice and cancel, so the patient falls TOWARDS the
 lesion. Applying the contralateral rule here lands in the wrong hemisphere every
 time, which is exactly why it is worth a case.
 
-That third pair is the sharpest, and the scorers enforce it in both directions:
+The deep pair is the sharpest, and the scorers enforce it in both directions:
 in the motor case the thalamus scores `none`, and in the sensory case the
 lentiform scores `none`. Deep, correct side, wrong supply. A scorer that waved
 through "any deep structure on the correct side" would teach the opposite of
@@ -46,9 +46,9 @@ territory is paired left and right and a real infarct stops at the midline; the
 vertebrals fuse into one midline vessel, so here both sides score `full` —
 verified, and only here.
 
-**Cases 2 and 3 were added with ZERO code changes**, which is the schema doing
-its job: cases are content, and if adding one needs a code change the schema is
-wrong.
+**Every case after the first was added with ZERO code changes**, which is the
+schema doing its job: cases are content, and if adding one needs a code change
+the schema is wrong.
 
 ### What the first run taught
 
