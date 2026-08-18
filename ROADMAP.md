@@ -158,7 +158,22 @@ tens, not hundreds.
 
 ---
 
-## Experiment 0 — run this before building anything
+## Experiment 0 — RUN. Result below.
+
+**Done on this PC in Docker, not on Horizon.** The synthetic T1 was exported at
+208³ and put through FSL `bet` (8.5 s). Full write-up: `docs/experiment-0.md`.
+
+**Headline: the image does not fail loudly, it fails quietly.** BET produced a
+mask 22% larger than the brain — Dice 0.89, which reads as "fine" in any report
+— and 88% of the error is sulcal space smoothed over, because there is no skull
+to stop the deformable surface and no partial-volume ramp at the boundary to
+find. The tissue edge is a cliff from 0.465 to exactly 0.000.
+
+That is the Phase 2 argument made empirically rather than asserted: a method
+benchmarked on this image gets a plausible, wrong answer, and the error is
+invisible without ground truth.
+
+## Experiment 0 — original plan
 
 **Hypothesis.** The current synthetic T1 is realistic enough for `recon-all` to
 process, or it is not, and which stage breaks first tells us exactly what the
